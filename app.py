@@ -29,6 +29,14 @@ def create_streamlit_app():
     if 'analysis_results' not in st.session_state:
         st.session_state.analysis_results = []
 
+    # NYTT: Lägg till sessionsvariabel för att hålla reda på watchlist-ändringar
+    if 'watchlist_version' not in st.session_state:
+        st.session_state.watchlist_version = 0
+
+    # NYTT: Skapa sessionsvariabel för misslyckade analyser
+    if 'failed_analyses' not in st.session_state:
+        st.session_state.failed_analyses = []
+
     # Skapa UI-sektioner
     tab1, tab2 = st.tabs(["Watchlist & Batch Analysis", "Enskild Aktieanalys"])
 
@@ -90,27 +98,51 @@ def create_streamlit_app():
                         # Uppdatera sidan för att visa ändringen
                         st.rerun()
 
-            # Knapp för att köra batch-analys på hela watchlist
+            # ÄNDRAT: Knapp för att köra batch-analys på hela watchlist och lagt till "Rensa cache"-knapp
             if watchlist:
-                if st.button("Analysera alla", key="analyze_all"):
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                col_buttons1, col_buttons2 = st.columns(2)
 
-                    # Callback för progress
-                    def update_progress(progress, text):
-                        progress_bar.progress(progress)
-                        status_text.text(text)
+                with col_buttons1:
+                    if st.button("Analysera alla", key="analyze_all"):
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
 
-                    # Kör batch-analys
-                    results = strategy.batch_analyze(
-                        watchlist, update_progress)
-                    st.session_state.analysis_results = results
+                        # Callback för progress
+                        def update_progress(progress, text):
+                            progress_bar.progress(progress)
+                            status_text.text(text)
 
-                    # Ta bort progress när klar
-                    progress_bar.empty()
-                    status_text.empty()
+                        # Kör batch-analys på en kopierad lista för att undvika ändringar under analys
+                        watchlist_copy = watchlist.copy()
+                        results = strategy.batch_analyze(
+                            watchlist_copy, update_progress)
+                        st.session_state.analysis_results = results
 
-                    st.success("Analys klar!")
+                        # Ta bort progress när klar
+                        progress_bar.empty()
+                        status_text.empty()
+
+                        st.success("Analys klar!")
+
+                        # NYTT: Visa information om misslyckade analyser
+                        if st.session_state.failed_analyses:
+                            with st.expander(f"Aktier som inte kunde analyseras ({len(st.session_state.failed_analyses)})"):
+                                for fail in st.session_state.failed_analyses:
+                                    st.warning(
+                                        f"**{fail['ticker']}**: {fail['error_message']}")
+
+                                st.info(f"{len(results) - len(st.session_state.failed_analyses)} " +
+                                        f"av {len(watchlist)} aktier analyserades framgångsrikt.")
+
+                # NYTT: Lägg till knapp för att rensa cache
+                with col_buttons2:
+                    if st.button("Rensa cache", key="clear_cache"):
+                        # Rensa analysflaggorna för att tvinga omanalys
+                        st.session_state.analysis_results = []
+                        st.session_state.failed_analyses = []
+                        st.session_state.watchlist_version += 1
+                        st.success("Cacheminnet rensat. Kör analys igen.")
+                        st.rerun()
             else:
                 st.info(
                     "Lägg till aktier i din watchlist för att kunna analysera dem")

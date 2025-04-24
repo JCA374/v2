@@ -305,6 +305,7 @@ class ValueMomentumStrategy:
     def batch_analyze(self, ticker_list, progress_callback=None):
         """Analysera en batch av aktier och returnera resultaten"""
         results = []
+        failed_analyses = []  # Lista för att spåra misslyckade analyser
 
         total = len(ticker_list)
         for i, ticker in enumerate(ticker_list):
@@ -313,8 +314,32 @@ class ValueMomentumStrategy:
                 progress_callback(
                     i / total, f"Analyserar {ticker} ({i+1}/{total})")
 
-            analysis = self.analyze_stock(ticker)
-            results.append(analysis)
+            # Analysera aktien
+            try:
+                analysis = self.analyze_stock(ticker)
+                results.append(analysis)
+
+                # Spara information om misslyckade analyser
+                if "error" in analysis:
+                    failed_analyses.append({
+                        "ticker": ticker,
+                        "error_message": analysis["error"]
+                    })
+
+            except Exception as e:
+                # Spåra även oväntade fel
+                error_msg = f"Oväntat fel: {str(e)}"
+                results.append({"ticker": ticker, "error": error_msg})
+                failed_analyses.append({
+                    "ticker": ticker,
+                    "error_message": error_msg
+                })
+
+        # Spara misslyckade analyser i session state om tillgängligt
+        if 'st' in globals():
+            if 'failed_analyses' not in st.session_state:
+                st.session_state.failed_analyses = []
+            st.session_state.failed_analyses = failed_analyses
 
         return results
 
@@ -513,6 +538,31 @@ def create_streamlit_app():
                     f"Lade till {len(selected_index_stocks)} aktier till watchlist")
                 # Uppdatera watchlist
                 watchlist = watchlist_manager.get_watchlist()
+
+
+    # Display failed analyses if any exist
+    if 'failed_analyses' in st.session_state and st.session_state.failed_analyses:
+        num_failed = len(st.session_state.failed_analyses)
+        num_total = len(watchlist)
+        num_success = num_total - num_failed
+
+        # Create an expander to show failed analyses
+        with st.expander(f"Aktier som inte kunde analyseras ({num_failed} av {num_total})"):
+            for fail in st.session_state.failed_analyses:
+                st.warning(f"**{fail['ticker']}**: {fail['error_message']}")
+
+            # Show a summary
+            if num_success > 0:
+                st.info(
+                    f"{num_success} av {num_total} aktier analyserades framgångsrikt.")
+            else:
+                st.error("Inga aktier kunde analyseras framgångsrikt.")
+
+            # Option to clear the failed analyses
+            if st.button("Rensa lista", key="clear_failed"):
+                st.session_state.failed_analyses = []
+                st.rerun()
+
 
             # Manuellt lägga till aktie
             st.subheader("Lägg till manuellt")

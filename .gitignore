@@ -4,3 +4,9 @@ env/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Pytest artifacts
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
