@@ -45,10 +45,6 @@ class MultiWatchlistManager:
         if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
             st.session_state.active_watchlist_index = 0
 
-        # Initiera watchlist_version om den inte finns
-        if 'watchlist_version' not in st.session_state:
-            st.session_state.watchlist_version = 0
-
     def _save_to_cookies(self):
         """Save watchlists to cookies"""
         data = {
@@ -71,19 +67,6 @@ class MultiWatchlistManager:
                         self._save_to_cookies()
         except:
             pass
-
-    def _reset_analysis_state(self):
-        """Återställ analysresultat i session state när watchlist ändras"""
-        # Rensa analysresultat om de finns
-        if 'analysis_results' in st.session_state:
-            st.session_state.analysis_results = []
-
-        # Rensa failed_analyses om den finns
-        if 'failed_analyses' in st.session_state:
-            st.session_state.failed_analyses = []
-
-        # Öka watchlist_version
-        st.session_state.watchlist_version += 1
 
     def get_all_watchlists(self):
         """Get all watchlists"""
@@ -108,8 +91,6 @@ class MultiWatchlistManager:
         if 0 <= index < len(self.get_all_watchlists()):
             st.session_state.active_watchlist_index = index
             self._save_to_cookies()
-            # Återställ analysresultat när aktiv watchlist ändras
-            self._reset_analysis_state()
             return True
         return False
 
@@ -156,8 +137,6 @@ class MultiWatchlistManager:
                     0, st.session_state.active_watchlist_index - 1)
 
             self._save_to_cookies()
-            # Återställ analysresultat när en watchlist tas bort
-            self._reset_analysis_state()
             return True
         return False
 
@@ -175,9 +154,6 @@ class MultiWatchlistManager:
             if ticker not in watchlist["stocks"]:
                 watchlist["stocks"].append(ticker)
                 self._save_to_cookies()
-                # Återställ analysresultat när aktier läggs till
-                if index == self.get_active_watchlist_index():
-                    self._reset_analysis_state()
                 return True
         return False
 
@@ -192,9 +168,6 @@ class MultiWatchlistManager:
             if ticker in watchlist["stocks"]:
                 watchlist["stocks"].remove(ticker)
                 self._save_to_cookies()
-                # Återställ analysresultat när aktier tas bort
-                if index == self.get_active_watchlist_index():
-                    self._reset_analysis_state()
                 return True
         return False
 
@@ -259,7 +232,3 @@ class MultiWatchlistManager:
         except Exception as e:
             st.error(f"Fel vid import från delad länk: {str(e)}")
             return None
-
-
-# Lägg till kompatibilitet för koden som importerar WatchlistManager
-WatchlistManager = MultiWatchlistManager

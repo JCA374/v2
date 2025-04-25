@@ -6,9 +6,11 @@ import streamlit as st
 import time
 import json
 import os
+import base64
+from urllib.parse import quote, unquote
 
 from strategy import ValueMomentumStrategy
-from watchlist import WatchlistManager
+from watchlist import MultiWatchlistManager  # Updated import
 from helpers import create_results_table, get_index_constituents
 
 
@@ -21,21 +23,27 @@ def create_streamlit_app():
 
     st.title("Värde & Momentum Aktiestrategi")
 
+    # Check URL parameters for shared watchlist
+    query_params = st.query_params
+    has_shared_watchlist = "shared_watchlist" in query_params
+
     # Initiera strategiklassen och watchlist manager
     strategy = ValueMomentumStrategy()
-    watchlist_manager = WatchlistManager()
+    watchlist_manager = MultiWatchlistManager()  # Updated to use MultiWatchlistManager
+
+    # Handle importing shared watchlist if present in URL
+    if has_shared_watchlist:
+        encoded_data = query_params["shared_watchlist"][0]
+        imported_index = watchlist_manager.import_from_share_link(encoded_data)
+        if imported_index is not None:
+            watchlist_manager.set_active_watchlist(imported_index)
+            st.success("Importerad watchlist från delad länk!")
+            # Clear the parameter after import to avoid reimporting on refresh
+            st.query_params.clear()
 
     # Skapa sessionsvariabel för analysresultat om den inte finns
     if 'analysis_results' not in st.session_state:
         st.session_state.analysis_results = []
-
-    # NYTT: Lägg till sessionsvariabel för att hålla reda på watchlist-ändringar
-    if 'watchlist_version' not in st.session_state:
-        st.session_state.watchlist_version = 0
-
-    # NYTT: Skapa sessionsvariabel för misslyckade analyser
-    if 'failed_analyses' not in st.session_state:
-        st.session_state.failed_analyses = []
 
     # Skapa UI-sektioner
     tab1, tab2 = st.tabs(["Watchlist & Batch Analysis", "Enskild Aktieanalys"])
@@ -45,7 +53,154 @@ def create_streamlit_app():
         col1, col2 = st.columns([1, 3])
 
         with col1:
-            st.subheader("Min Watchlist")
+            # Watchlist selector and management
+            st.subheader("Mina Watchlists")
+            
+            # Dropdown to select active watchlist
+            all_watchlists = watchlist_manager.get_all_watchlists()
+            watchlist_names = [w["name"] for w in all_watchlists]
+            current_index = watchlist_manager.get_active_watchlist_index()
+            
+            col_ws1, col_ws2 = st.columns([3, 1])
+            
+            with col_ws1:
+                selected_watchlist = st.selectbox(
+                    "Välj watchlist",
+                    options=range(len(watchlist_names)),
+                    format_func=lambda i: watchlist_names[i],
+                    index=current_index
+                )
+                
+                if selected_watchlist != current_index:
+                    watchlist_manager.set_active_watchlist(selected_watchlist)
+                    st.rerun()
+            
+            with col_ws2:
+                if st.button("+ Ny", key="add_new_watchlist"):
+                    new_index = watchlist_manager.add_watchlist()
+                    watchlist_manager.set_active_watchlist(new_index)
+                    st.rerun()
+            
+            # Watchlist management (rename, delete, share)
+            with st.expander("Hantera watchlist"):
+                active_watchlist = watchlist_manager.get_active_watchlist()
+                
+                # Rename watchlist
+                new_name = st.text_input("Nytt namn", value=active_watchlist["name"])
+                if st.button("Byt namn"):
+                    if watchlist_manager.rename_watchlist(current_index, new_name):
+                        st.success(f"Bytte namn till {new_name}")
+                        st.rerun()
+                    else:
+                        st.error("Kunde inte byta namn")
+                
+                # Delete watchlist
+                if len(all_watchlists) > 1:  # Only show delete if there's more than one watchlist
+                    if st.button("Ta bort denna watchlist", key="delete_watchlist"):
+                        if watchlist_manager.delete_watchlist(current_index):
+                            st.success("Watchlist borttagen")
+                            st.rerun()
+                        else:
+                            st.error("Kunde inte ta bort watchlist")
+                
+                # Share watchlist
+                st.subheader("Dela watchlist")
+                active_watchlist = watchlist_manager.get_active_watchlist()
+                share_export_tab1, share_export_tab2 = st.tabs(["Delningslänk", "JSON Export"])
+                
+                with share_export_tab1:
+                    share_link = watchlist_manager.generate_share_link()
+                    
+                    if share_link:
+                        # Get the base URL from the browser
+                        st.markdown("Kopiera denna länk för att dela din watchlist:")
+                        st.code(share_link, language=None)
+                        
+                        # Use JavaScript to help with copying
+                        copy_js = f"""
+                        <script>
+                        function copyShareLink() {{
+                            const text = '{share_link}';
+                            navigator.clipboard.writeText(window.location.origin + window.location.pathname + text)
+                                .then(() => alert('Länk kopierad!'))
+                                .catch(err => alert('Kunde inte kopiera: ' + err));
+                        }}
+                        </script>
+                        <button onclick="copyShareLink()" style="background-color:#4CAF50;color:white;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">Kopiera delningslänk</button>
+                        """
+                        st.markdown(copy_js, unsafe_allow_html=True)
+                
+                with share_export_tab2:
+                    json_data = watchlist_manager.export_watchlist()
+                    if json_data:
+                        st.markdown("Kopiera denna JSON kod för att dela din watchlist:")
+                        st.code(json_data, language="json")
+                        
+                        # Use JavaScript to help with copying
+                        copy_js = f"""
+                        <script>
+                        function copyJsonCode() {{
+                            const text = {json.dumps(json_data)};
+                            navigator.clipboard.writeText(text)
+                                .then(() => alert('JSON kopierad!'))
+                                .catch(err => alert('Kunde inte kopiera: ' + err));
+                        }}
+                        </script>
+                        <button onclick="copyJsonCode()" style="background-color:#4CAF50;color:white;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">Kopiera JSON</button>
+                        """
+                        st.markdown(copy_js, unsafe_allow_html=True)
+                
+                # Import watchlist
+                st.subheader("Importera watchlist")
+                import_tab1, import_tab2 = st.tabs(["Från länk", "Från JSON"])
+                
+                with import_tab1:
+                    import_link = st.text_input("Klistra in delningslänk eller kod", key="import_link")
+                    
+                    if st.button("Importera från länk"):
+                        try:
+                            # Clean up the input to handle various formats
+                            if "shared_watchlist=" in import_link:
+                                # Extract the parameter from a full URL or just the query string
+                                parts = import_link.split("shared_watchlist=")
+                                if len(parts) > 1:
+                                    encoded_data = parts[1].split("&")[0]  # Handle additional params
+                                    imported_index = watchlist_manager.import_from_share_link(encoded_data)
+                                    
+                                    if imported_index is not None:
+                                        watchlist_manager.set_active_watchlist(imported_index)
+                                        st.success("Watchlist importerad från länk!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Kunde inte importera watchlist från länk")
+                                else:
+                                    st.error("Ogiltig delningslänk format")
+                            else:
+                                st.error("Ingen giltig delningslänk hittades")
+                        except Exception as e:
+                            st.error(f"Fel vid import: {str(e)}")
+                
+                with import_tab2:
+                    import_json = st.text_area("Klistra in JSON data", key="import_json")
+                    
+                    if st.button("Importera från JSON"):
+                        try:
+                            if import_json:
+                                imported_index = watchlist_manager.import_watchlist(import_json)
+                                
+                                if imported_index is not None:
+                                    watchlist_manager.set_active_watchlist(imported_index)
+                                    st.success("Watchlist importerad från JSON!")
+                                    st.rerun()
+                                else:
+                                    st.error("Kunde inte importera watchlist från JSON")
+                            else:
+                                st.error("Ingen JSON data angiven")
+                        except Exception as e:
+                            st.error(f"Fel vid import: {str(e)}")
+
+            # Display current watchlist contents
+            st.subheader(f"Aktier i {active_watchlist['name']}")
 
             # Visa watchlist
             watchlist = watchlist_manager.get_watchlist()
@@ -86,7 +241,7 @@ def create_streamlit_app():
                         st.error("Kunde inte lägga till aktien")
 
             # Lista alla aktier i watchlist med remove-knappar
-            st.subheader("Hantera Watchlist")
+            st.subheader("Hantera Aktier")
             for ticker in watchlist:
                 col_a, col_b = st.columns([3, 1])
                 with col_a:
@@ -98,51 +253,27 @@ def create_streamlit_app():
                         # Uppdatera sidan för att visa ändringen
                         st.rerun()
 
-            # ÄNDRAT: Knapp för att köra batch-analys på hela watchlist och lagt till "Rensa cache"-knapp
+            # Knapp för att köra batch-analys på hela watchlist
             if watchlist:
-                col_buttons1, col_buttons2 = st.columns(2)
+                if st.button("Analysera alla", key="analyze_all"):
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
 
-                with col_buttons1:
-                    if st.button("Analysera alla", key="analyze_all"):
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
+                    # Callback för progress
+                    def update_progress(progress, text):
+                        progress_bar.progress(progress)
+                        status_text.text(text)
 
-                        # Callback för progress
-                        def update_progress(progress, text):
-                            progress_bar.progress(progress)
-                            status_text.text(text)
+                    # Kör batch-analys
+                    results = strategy.batch_analyze(
+                        watchlist, update_progress)
+                    st.session_state.analysis_results = results
 
-                        # Kör batch-analys på en kopierad lista för att undvika ändringar under analys
-                        watchlist_copy = watchlist.copy()
-                        results = strategy.batch_analyze(
-                            watchlist_copy, update_progress)
-                        st.session_state.analysis_results = results
+                    # Ta bort progress när klar
+                    progress_bar.empty()
+                    status_text.empty()
 
-                        # Ta bort progress när klar
-                        progress_bar.empty()
-                        status_text.empty()
-
-                        st.success("Analys klar!")
-
-                        # NYTT: Visa information om misslyckade analyser
-                        if st.session_state.failed_analyses:
-                            with st.expander(f"Aktier som inte kunde analyseras ({len(st.session_state.failed_analyses)})"):
-                                for fail in st.session_state.failed_analyses:
-                                    st.warning(
-                                        f"**{fail['ticker']}**: {fail['error_message']}")
-
-                                st.info(f"{len(results) - len(st.session_state.failed_analyses)} " +
-                                        f"av {len(watchlist)} aktier analyserades framgångsrikt.")
-
-                # NYTT: Lägg till knapp för att rensa cache
-                with col_buttons2:
-                    if st.button("Rensa cache", key="clear_cache"):
-                        # Rensa analysflaggorna för att tvinga omanalys
-                        st.session_state.analysis_results = []
-                        st.session_state.failed_analyses = []
-                        st.session_state.watchlist_version += 1
-                        st.success("Cacheminnet rensat. Kör analys igen.")
-                        st.rerun()
+                    st.success("Analys klar!")
             else:
                 st.info(
                     "Lägg till aktier i din watchlist för att kunna analysera dem")
@@ -295,12 +426,26 @@ def create_streamlit_app():
                     st.markdown(
                         f"<h3 style='color:{signal_color}'>Signal: {signal_text}</h3>", unsafe_allow_html=True)
 
-                    # Lägg till i watchlist-knapp
-                    if analysis["ticker"] not in watchlist_manager.get_watchlist():
-                        if st.button("Lägg till i watchlist"):
-                            watchlist_manager.add_stock(analysis["ticker"])
+                    # Show watchlist options - updated to allow adding to any watchlist
+                    st.subheader("Lägg till i watchlist")
+                    
+                    # Create a radio button to select which watchlist to add to
+                    all_watchlists = watchlist_manager.get_all_watchlists()
+                    watchlist_names = [w["name"] for w in all_watchlists]
+                    
+                    target_watchlist = st.radio(
+                        "Välj watchlist",
+                        options=range(len(watchlist_names)),
+                        format_func=lambda i: watchlist_names[i],
+                        horizontal=True
+                    )
+                    
+                    if st.button("Lägg till i watchlist"):
+                        if watchlist_manager.add_stock_to_watchlist(target_watchlist, analysis["ticker"]):
                             st.success(
-                                f"Lade till {analysis['ticker']} i watchlist")
+                                f"Lade till {analysis['ticker']} i {watchlist_names[target_watchlist]}")
+                        else:
+                            st.error("Kunde inte lägga till aktien (finns redan eller ogiltigt namn)")
 
                     # Skapa flikar för detaljer
                     tab2_1, tab2_2, tab2_3 = st.tabs(
