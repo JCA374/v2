@@ -3,12 +3,12 @@ import streamlit as st
 from strategy import ValueMomentumStrategy
 from storage.watchlist_manager import MultiWatchlistManager
 from helpers import create_results_table, get_index_constituents
-from debug_utils import add_debug_section
+from datetime import datetime
+import json
 
 # Import tabs
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
-from tabs.debug_tab import render_debug_tab  # Import the new debug tab
 
 
 def create_streamlit_app():
@@ -26,6 +26,9 @@ def create_streamlit_app():
 
     if 'watchlist_manager' not in st.session_state:
         st.session_state.watchlist_manager = MultiWatchlistManager()
+        # Enable debug mode initially to diagnose issues
+        st.session_state.watchlist_manager.debug_mode = True
+        st.session_state.watchlist_manager.cookie_manager.debug_mode = True
 
     if 'analysis_results' not in st.session_state:
         st.session_state.analysis_results = []
@@ -37,9 +40,6 @@ def create_streamlit_app():
     tabs = {
         "Watchlist & Batch Analysis": render_watchlist_tab,
         "Enskild Aktieanalys": render_analysis_tab,
-        "Debug & Felsökning": render_debug_tab,  # Add the debug tab
-        # Add new tabs here
-        # "New Tab Name": render_new_tab,
     }
 
     # Create the tabs
@@ -59,13 +59,6 @@ def create_streamlit_app():
 
     # Render sidebar
     render_sidebar()
-
-    # Add debug section to the sidebar if a special URL parameter is present
-    show_debug_in_sidebar = st.query_params.get(
-        "debug_mode", ["false"])[0].lower() == "true"
-    if show_debug_in_sidebar:
-        with st.sidebar:
-            add_debug_section(st.session_state.watchlist_manager)
 
 
 def handle_url_params():
@@ -114,3 +107,56 @@ def render_sidebar():
         
         Strategin följer principen "Rid vinnarna och sälj förlorarna". Vid brott under MA40, sälj direkt eller bevaka hårt. Ta förluster tidigt.
         """)
+
+    # Manual backup/restore functionality in sidebar for localStorage fallback
+    st.sidebar.markdown("---")
+
+    # Test localStorage and show status
+    if st.sidebar.button("Test Storage"):
+        st.session_state.watchlist_manager.cookie_manager.test_localstorage()
+
+    # Add manual backup/restore to sidebar (always available)
+    with st.sidebar.expander("Backup/Restore Watchlists", expanded=True):
+        st.write("If automatic storage isn't working, use these options:")
+
+        # Export current watchlists to JSON file
+        if 'watchlists' in st.session_state:
+            data = {
+                "watchlists": st.session_state.watchlists,
+                "active_index": st.session_state.get('active_watchlist_index', 0),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            json_data = json.dumps(data, indent=2)
+            st.download_button(
+                "Download Backup",
+                json_data,
+                "watchlists_backup.json",
+                "application/json"
+            )
+
+        # Import from JSON file
+        st.write("Restore from backup:")
+        uploaded_file = st.file_uploader("Upload Backup File", type=['json'])
+        if uploaded_file is not None:
+            try:
+                import_data = json.loads(uploaded_file.getvalue().decode())
+                if "watchlists" in import_data:
+                    st.session_state.watchlists = import_data["watchlists"]
+                    st.session_state.active_watchlist_index = import_data.get(
+                        "active_index", 0)
+                    # Try to save to cookies as well
+                    st.session_state.watchlist_manager._save_to_cookies()
+                    st.success(
+                        f"Restored {len(import_data['watchlists'])} watchlists!")
+                    st.button("Reload App", on_click=lambda: st.rerun())
+                else:
+                    st.error("Invalid backup file")
+            except Exception as e:
+                st.error(f"Error importing backup: {str(e)}")
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**Utvecklad med Python och Streamlit**")
+
+
+if __name__ == "__main__":
+    create_streamlit_app()
