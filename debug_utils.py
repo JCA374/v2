@@ -108,7 +108,7 @@ def test_cookie_storage():
     test_data = {"test": test_value}
 
     # Create a test cookie manager
-    from cookie_manager import CookieManager
+    from v2.storage.cookie_manager import CookieManager
     test_manager = CookieManager(cookie_name="test_cookie")
 
     # Try to save the test data

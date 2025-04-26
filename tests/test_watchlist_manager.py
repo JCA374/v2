@@ -1,5 +1,5 @@
-from cookie_manager import CookieManager
-from watchlist import MultiWatchlistManager
+from v2.storage.cookie_manager import CookieManager
+from v2.old.watchlist import MultiWatchlistManager
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import json
