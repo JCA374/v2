@@ -1,5 +1,5 @@
 from app import create_streamlit_app
-from v2.old.strategy import ValueMomentumStrategy
+from v2.strategy import ValueMomentumStrategy
 # Updated to use MultiWatchlistManager
 from v2.old.watchlist import MultiWatchlistManager
 import unittest
