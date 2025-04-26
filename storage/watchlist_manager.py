@@ -7,6 +7,7 @@ import base64
 import uuid
 from datetime import datetime
 from urllib.parse import quote, unquote
+import os
 
 # Import from the same directory (relative import)
 from .cookie_manager import CookieManager
@@ -19,18 +20,22 @@ class MultiWatchlistManager:
     """
 
     def __init__(self):
+        """Initialize the watchlist manager with cookie storage"""
         # Create cookie manager
         self.cookie_manager = CookieManager(cookie_name="watchlists_data")
+        self.debug_mode = False  # For debugging
 
         # Initialize watchlists in session state if not present
         if 'watchlists' not in st.session_state:
             # Try to load from cookies first
             cookie_data = self.cookie_manager.load_cookie()
-
+            
             if cookie_data and "watchlists" in cookie_data:
                 st.session_state.watchlists = cookie_data["watchlists"]
                 st.session_state.active_watchlist_index = cookie_data.get(
                     "active_index", 0)
+                if self.debug_mode:
+                    st.write(f"Loaded {len(st.session_state.watchlists)} watchlists from cookies")
             else:
                 # Create default structure with one empty watchlist
                 st.session_state.watchlists = [{
@@ -39,10 +44,15 @@ class MultiWatchlistManager:
                     "stocks": []
                 }]
                 st.session_state.active_watchlist_index = 0
-
+                
                 # For compatibility with old version, check if watchlist.json exists
                 # and import its contents as the first watchlist
                 self._import_legacy_watchlist()
+                
+                # Save the initial state to cookies
+                self._save_to_cookies()
+                if self.debug_mode:
+                    st.write("Created default watchlist and saved to cookies")
 
         # Make sure active index is valid
         if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
@@ -52,14 +62,20 @@ class MultiWatchlistManager:
         """Save watchlists to cookies"""
         data = {
             "watchlists": st.session_state.watchlists,
-            "active_index": st.session_state.active_watchlist_index
+            "active_index": st.session_state.active_watchlist_index,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        self.cookie_manager.save_cookie(data)
+        success = self.cookie_manager.save_cookie(data)
+        if self.debug_mode:
+            if success:
+                st.write(f"Saved {len(st.session_state.watchlists)} watchlists to cookies")
+            else:
+                st.write("Failed to save watchlists to cookies")
+        return success
 
     def _import_legacy_watchlist(self):
         """Import legacy watchlist.json if it exists"""
         try:
-            import os
             if os.path.exists("watchlist.json"):
                 with open("watchlist.json", 'r') as f:
                     legacy_stocks = json.load(f)
@@ -68,8 +84,33 @@ class MultiWatchlistManager:
                     if legacy_stocks and len(st.session_state.watchlists) > 0 and not st.session_state.watchlists[0]["stocks"]:
                         st.session_state.watchlists[0]["stocks"] = legacy_stocks
                         self._save_to_cookies()
-        except:
+                        if self.debug_mode:
+                            st.write(f"Imported {len(legacy_stocks)} stocks from legacy watchlist")
+        except Exception as e:
+            if self.debug_mode:
+                st.write(f"Error importing legacy watchlist: {str(e)}")
             pass
+
+    def debug_watchlists(self):
+        """Debug method to print current watchlist state"""
+        st.write("## Current Watchlist State")
+        st.write(f"Number of watchlists: {len(st.session_state.watchlists)}")
+        st.write(f"Active watchlist index: {st.session_state.active_watchlist_index}")
+        
+        for i, watchlist in enumerate(st.session_state.watchlists):
+            st.write(f"### Watchlist {i}: {watchlist['name']}")
+            st.write(f"ID: {watchlist['id']}")
+            st.write(f"Stocks: {', '.join(watchlist['stocks']) if watchlist['stocks'] else 'None'}")
+        
+        # Also check what's saved in cookies
+        cookie_data = self.cookie_manager.load_cookie()
+        if cookie_data and "watchlists" in cookie_data:
+            st.write("### Cookie Data")
+            st.write(f"Number of watchlists in cookie: {len(cookie_data['watchlists'])}")
+            st.write(f"Active index in cookie: {cookie_data.get('active_index', 'Not set')}")
+            st.write(f"Timestamp: {cookie_data.get('timestamp', 'Not set')}")
+        else:
+            st.write("No watchlist data found in cookies!")
 
     def get_all_watchlists(self):
         """Get all watchlists"""

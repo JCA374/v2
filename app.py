@@ -3,10 +3,12 @@ import streamlit as st
 from strategy import ValueMomentumStrategy
 from storage.watchlist_manager import MultiWatchlistManager
 from helpers import create_results_table, get_index_constituents
+from debug_utils import add_debug_section
 
 # Import tabs
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
+from tabs.debug_tab import render_debug_tab  # Import the new debug tab
 
 
 def create_streamlit_app():
@@ -35,6 +37,7 @@ def create_streamlit_app():
     tabs = {
         "Watchlist & Batch Analysis": render_watchlist_tab,
         "Enskild Aktieanalys": render_analysis_tab,
+        "Debug & Felsökning": render_debug_tab,  # Add the debug tab
         # Add new tabs here
         # "New Tab Name": render_new_tab,
     }
@@ -43,13 +46,26 @@ def create_streamlit_app():
     tab_names = list(tabs.keys())
     streamlit_tabs = st.tabs(tab_names)
 
+    # Store the current tab in session state
+    if 'current_tab' not in st.session_state:
+        st.session_state['current_tab'] = tab_names[0]
+
     # Render each tab's content
     for i, (name, render_function) in enumerate(tabs.items()):
         with streamlit_tabs[i]:
+            # When this tab is active, update the current tab in session state
+            st.session_state['current_tab'] = name
             render_function()
 
     # Render sidebar
     render_sidebar()
+
+    # Add debug section to the sidebar if a special URL parameter is present
+    show_debug_in_sidebar = st.query_params.get(
+        "debug_mode", ["false"])[0].lower() == "true"
+    if show_debug_in_sidebar:
+        with st.sidebar:
+            add_debug_section(st.session_state.watchlist_manager)
 
 
 def handle_url_params():
@@ -98,10 +114,3 @@ def render_sidebar():
         
         Strategin följer principen "Rid vinnarna och sälj förlorarna". Vid brott under MA40, sälj direkt eller bevaka hårt. Ta förluster tidigt.
         """)
-
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**Utvecklad med Python och Streamlit**")
-
-
-if __name__ == "__main__":
-    create_streamlit_app()
