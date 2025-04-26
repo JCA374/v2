@@ -6,382 +6,408 @@ import streamlit as st
 import time
 import json
 import os
-
 from datetime import datetime, timedelta
-import pandas as pd
-import numpy as np
-import yfinance as yf
-import matplotlib.pyplot as plt
-
+import logging
 
 class ValueMomentumStrategy:
+    """
+    Implementation of the Value & Momentum stock analysis strategy.
+    Combines fundamental analysis with technical indicators to identify strong stocks.
+    """
+    
     def __init__(self):
-        self.today = datetime.now()
-        # 3 years of data for analysis
-        self.start_date = self.today - timedelta(days=365*3)
-
-    def get_stock_data(self, ticker, interval='1wk'):
-        """Hämta aktiedata från Yahoo Finance"""
-        try:
-            stock = yf.Ticker(ticker)
-            hist = stock.history(start=self.start_date,
-                                 end=self.today, interval=interval)
-
-            # Kontrollera om vi fått tillräckligt med data
-            if len(hist) < 50:
-                return None, "Otillräcklig data för analys"
-
-            return stock, hist
-        except Exception as e:
-            return None, f"Fel vid hämtning av data: {e}"
-
-    def get_fundamentals(self, stock):
-        """Hämta fundamentala data för aktien"""
-        try:
-            # Hämta finansiell information
-            info = stock.info
-
-            # Beräkna relevanta nyckeltal
-            fundamental_data = {
-                "ticker": info.get('symbol', 'N/A'),
-                "name": info.get('shortName', 'N/A'),
-                "sector": info.get('sector', 'N/A'),
-                "profitable": info.get('netIncomeToCommon', 0) > 0,
-                "pe_ratio": info.get('trailingPE', None),
-                "revenue_growth": info.get('revenueGrowth', None),
-                "profit_margin": info.get('profitMargins', None),
-                "earnings_growth": info.get('earningsGrowth', None)
-            }
-
-            # Hämta historiska kvartalssiffror för omsättning och vinst
-            try:
-                earnings = stock.earnings_history
-                if not earnings.empty:
-                    # Beräkna tillväxt och vinstmarginal trender
-                    fundamental_data['earnings_trend'] = 'Stabil eller ökande' if earnings['Earnings'].diff(
-                    ).mean() >= 0 else 'Minskande'
-            except:
-                fundamental_data['earnings_trend'] = 'Data saknas'
-
-            return fundamental_data
-        except Exception as e:
-            return {"error": f"Kunde inte hämta fundamentala data: {e}"}
-
-    # Egen implementation av RSI utan pandas_ta
-    def calculate_rsi(self, prices, window=14):
-        # Hantera edge case med för lite data
-        if len(prices) <= window:
-            return np.array([np.nan] * len(prices))
-
-        # Beräkna förändringar
-        deltas = np.diff(prices)
-        seed = deltas[:window+1]
-
-        # Initiala värden
-        up = seed[seed >= 0].sum() / window
-        down = -seed[seed < 0].sum() / window
-
-        # Undvik division med noll
-        if down == 0:
-            return np.ones_like(prices) * 100
-
-        rs = up / down
-        rsi = np.zeros_like(prices)
-        rsi[:window+1] = 100. - (100. / (1. + rs))
-
-        # Beräkna RSI för resten av prisdata
-        for i in range(window+1, len(prices)):
-            delta = deltas[i-1]  # Justera index
-
-            if delta > 0:
-                upval = delta
-                downval = 0
-            else:
-                upval = 0
-                downval = -delta
-
-            # Använd EMA för beräkning av medelvärden
-            up = (up * (window - 1) + upval) / window
-            down = (down * (window - 1) + downval) / window
-
-            rs = up / down if down != 0 else 999  # Undvik division med noll
-            rsi[i] = 100. - (100. / (1. + rs))
-
-        return rsi
-
-    def calculate_technical_indicators(self, df):
-        """Beräkna tekniska indikatorer för aktien"""
-        # Kopiera dataframe för att undvika varningar
-        data = df.copy()
-
-        # Kontrollera för tomma dataframes
-        if data.empty:
-            return data
-
-        # Lägg till moving averages
-        # 4-veckors MA (motsvarar ca 1 månad)
-        data['MA4'] = data['Close'].rolling(window=4).mean()
-        # 40-veckors MA (motsvarar ca 200 dagar)
-        data['MA40'] = data['Close'].rolling(window=40).mean()
-
-        # Beräkna RSI med egen funktion
-        data['RSI'] = self.calculate_rsi(data['Close'].values, window=14)
-
-        # Beräkna högre bottnar (higher lows)
-        data['higher_lows'] = self._calculate_higher_lows(data)
-
-        # 52-veckors högsta nivå
-        data['52w_high'] = data['Close'].rolling(window=52).max()
-        # Inom 2% av högsta nivån
-        data['at_52w_high'] = (data['Close'] >= data['52w_high'] * 0.98)
-
-        # Konsolideringsfas breakout (enkel implementering)
-        data['volatility'] = data['Close'].pct_change().rolling(window=12).std()
-        data['breakout'] = (data['volatility'].shift(4) < data['volatility']) & (
-            data['Close'] > data['Close'].shift(4))
-
-        return data
-
-    def _calculate_higher_lows(self, data, lookback=10):
-        """Hjälpfunktion för att identifiera högre bottnar"""
-        if 'Low' not in data.columns or data.empty:
-            return pd.Series(np.zeros(len(data)))
-
-        highs_lows = pd.DataFrame()
-        highs_lows['min'] = data['Low'].rolling(
-            window=lookback, center=True).min()
-
-        # En enkel heuristik för att identifiera högre bottnar
-        higher_lows = np.zeros(len(data))
-
-        for i in range(lookback*2, len(data)):
-            min_values = highs_lows['min'].iloc[i-lookback:i].dropna()
-            if len(min_values) >= 2:  # Säkerställ att vi har tillräckligt med data
-                diffs = min_values.diff().dropna()
-                if len(diffs) > 0 and (diffs > 0).all():
-                    higher_lows[i] = 1
-
-        return pd.Series(higher_lows, index=data.index)
-
-    def analyze_stock(self, ticker):
-        """Analysera en aktie enligt värde & momentum-strategin"""
-        stock, hist_or_error = self.get_stock_data(ticker)
-
-        if stock is None:
-            return {"ticker": ticker, "error": hist_or_error}
-
-        # Hämta fundamentala data
-        fundamentals = self.get_fundamentals(stock)
-
-        # Beräkna tekniska indikatorer
-        technical = self.calculate_technical_indicators(hist_or_error)
-
-        # Skapa analys baserat på senaste data
-        try:
-            latest = technical.iloc[-1]
-
-            analysis = {
-                "ticker": ticker,
-                "name": fundamentals.get('name', ticker),
-                "date": latest.name.strftime('%Y-%m-%d'),
-                "price": latest['Close'],
-
-                # Fundamentala villkor
-                "is_profitable": fundamentals.get('profitable', False),
-                "pe_ratio": fundamentals.get('pe_ratio', None),
-                "revenue_growth": fundamentals.get('revenue_growth', None),
-                "profit_margin": fundamentals.get('profit_margin', None),
-                "earnings_trend": fundamentals.get('earnings_trend', 'N/A'),
-                "fundamental_check": self._evaluate_fundamentals(fundamentals),
-
-                # Tekniska villkor
-                "above_ma40": latest['Close'] > latest['MA40'] if not np.isnan(latest['MA40']) else False,
-                "above_ma4": latest['Close'] > latest['MA4'] if not np.isnan(latest['MA4']) else False,
-                "rsi_above_50": latest['RSI'] > 50 if not np.isnan(latest['RSI']) else False,
-                "higher_lows": bool(latest['higher_lows']),
-                "near_52w_high": bool(latest['at_52w_high']),
-                "breakout": bool(latest['breakout']),
-                "technical_check": self._evaluate_technicals(latest),
-
-                # Historisk data för diagram
-                "history": technical.tail(52),
-
-                # Scoring - ett sammanfattande värde 0-100
-                "tech_score": self._calculate_tech_score(latest)
-            }
-
-            # Sammanfattande bedömning
-            analysis["buy_signal"] = analysis["fundamental_check"] and analysis["technical_check"]
-            analysis["sell_signal"] = not analysis["above_ma40"]
-            analysis["hold_signal"] = not analysis["sell_signal"] and not analysis["buy_signal"]
-
-            # Signal text
-            if analysis["buy_signal"]:
-                analysis["signal"] = "KÖP"
-            elif analysis["sell_signal"]:
-                analysis["signal"] = "SÄLJ"
-            else:
-                analysis["signal"] = "HÅLL"
-
-            return analysis
-
-        except Exception as e:
-            return {"ticker": ticker, "error": f"Fel vid analys: {e}"}
-
-    def _calculate_tech_score(self, latest_data):
-        """Beräkna ett tekniskt score 0-100 för aktien"""
-        score = 0
-
-        # Grund-villkor
-        if latest_data['Close'] > latest_data['MA40'] if not np.isnan(latest_data['MA40']) else False:
-            score += 30
-
-        if latest_data['RSI'] > 50 if not np.isnan(latest_data['RSI']) else False:
-            score += 20
-
-        if bool(latest_data['higher_lows']):
-            score += 20
-
-        # Extra poäng
-        if latest_data['Close'] > latest_data['MA4'] if not np.isnan(latest_data['MA4']) else False:
-            score += 10
-
-        if bool(latest_data['at_52w_high']):
-            score += 10
-
-        if bool(latest_data['breakout']):
-            score += 10
-
-        return score
-
-    def _evaluate_fundamentals(self, fundamentals):
-        """Utvärdera om aktien uppfyller fundamentala kriterier"""
-        if "error" in fundamentals:
-            return False
-
-        conditions = [
-            fundamentals.get('profitable', False),  # Bolaget ska tjäna pengar
-
-            # Ökande omsättning och vinst, eller ökande omsättning med stabil vinstmarginal
-            fundamentals.get('revenue_growth', 0) > 0 and
-            (fundamentals.get('earnings_growth', 0) > 0 or
-             fundamentals.get('profit_margin', 0) > 0.05),
-
-            # Rimligt P/E
-            fundamentals.get('pe_ratio', 100) is not None and
-            fundamentals.get('pe_ratio', 100) < 30 and
-            fundamentals.get('pe_ratio', 0) > 0
-        ]
-
-        # Filtrera bort None-värden
-        valid_conditions = [c for c in conditions if c is not None]
-
-        # Om alla villkor är None, returnera False
-        if not valid_conditions:
-            return False
-
-        return all(valid_conditions)
-
-    def _evaluate_technicals(self, latest_data):
-        """Utvärdera om aktien uppfyller tekniska kriterier"""
-        conditions = [
-            latest_data['Close'] > latest_data['MA40'] if not np.isnan(
-                latest_data['MA40']) else False,  # Över 40-veckors MA
-            latest_data['RSI'] > 50 if not np.isnan(
-                latest_data['RSI']) else False,  # RSI över 50
-            bool(latest_data['higher_lows'])  # Högre bottnar
-        ]
-
-        # Extra styrka om någon av dessa uppfylls
-        extra_strength = [
-            bool(latest_data['at_52w_high']),  # Nära 52v högsta
-            bool(latest_data['breakout']),  # Breakout
-            latest_data['Close'] > latest_data['MA4'] if not np.isnan(
-                latest_data['MA4']) else False  # Över 4-veckors MA
-        ]
-
-        return all(conditions) and any(extra_strength)
-
-    def batch_analyze(self, ticker_list, progress_callback=None):
-        """Analysera en batch av aktier och returnera resultaten"""
+        """Initialize the strategy with default parameters"""
+        # Technical parameters
+        self.ma_short = 4  # 4-week moving average
+        self.ma_long = 40  # 40-week moving average
+        self.rsi_period = 14  # RSI calculation period
+        self.rsi_threshold = 50  # RSI threshold for bullish signal
+        self.near_high_threshold = 0.85  # % of 52-week high to consider "near"
+        
+        # Fundamental parameters
+        self.pe_max = 35  # Maximum P/E ratio for value
+        
+        # Configure yfinance logging (reduce verbosity)
+        logging.getLogger('yfinance').setLevel(logging.ERROR)
+    
+    def batch_analyze(self, tickers, progress_callback=None):
+        """
+        Analyze multiple stocks and return a list of analysis results.
+        
+        Parameters:
+        - tickers: List of stock ticker symbols
+        - progress_callback: Function to call with progress updates (0-1.0 and text)
+        
+        Returns:
+        - List of analysis result dictionaries
+        """
         results = []
-        failed_analyses = []  # Lista för att spåra misslyckade analyser
-
-        total = len(ticker_list)
-        for i, ticker in enumerate(ticker_list):
-            # Uppdatera progress bar om callback finns
+        failed_analyses = []  # Track failures for reporting
+        
+        # Store failed analyses in session state if it doesn't exist
+        import streamlit as st
+        if 'failed_analyses' not in st.session_state:
+            st.session_state.failed_analyses = []
+        
+        for i, ticker in enumerate(tickers):
+            # Update progress
             if progress_callback:
-                progress_callback(
-                    i / total, f"Analyserar {ticker} ({i+1}/{total})")
-
-            # Analysera aktien
+                progress = i / len(tickers)
+                progress_callback(progress, f"Analyserar {ticker}... ({i+1}/{len(tickers)})")
+            
             try:
+                # Analyze this stock
                 analysis = self.analyze_stock(ticker)
                 results.append(analysis)
-
-                # Spara information om misslyckade analyser
-                if "error" in analysis:
-                    failed_analyses.append({
-                        "ticker": ticker,
-                        "error_message": analysis["error"]
-                    })
-
             except Exception as e:
-                # Spåra även oväntade fel
-                error_msg = f"Oväntat fel: {str(e)}"
-                results.append({"ticker": ticker, "error": error_msg})
-                failed_analyses.append({
+                # Add error information
+                error_info = {
                     "ticker": ticker,
-                    "error_message": error_msg
-                })
-
-        # Spara misslyckade analyser i session state om tillgängligt
-        if 'st' in globals():
-            if 'failed_analyses' not in st.session_state:
-                st.session_state.failed_analyses = []
-            st.session_state.failed_analyses = failed_analyses
-
+                    "error": str(e),
+                    "error_message": f"Fel vid analys: {str(e)}"
+                }
+                results.append(error_info)
+                failed_analyses.append(error_info)
+                print(f"Error analyzing {ticker}: {str(e)}")
+            
+        # Update progress to 100%
+        if progress_callback:
+            progress_callback(1.0, "Analys klar!")
+        
+        # Store failed analyses in session state for display
+        st.session_state.failed_analyses = failed_analyses
+        
         return results
-
+    
+    def analyze_stock(self, ticker):
+        """
+        Analyze a single stock according to Value & Momentum strategy.
+        
+        Parameters:
+        - ticker: Stock ticker symbol
+        
+        Returns:
+        - Dictionary with analysis results
+        """
+        # Get stock data
+        try:
+            stock = yf.Ticker(ticker)
+            
+            # Get basic info
+            info = stock.info
+            
+            # Handle missing name
+            try:
+                name = info.get('shortName', info.get('longName', ticker))
+            except:
+                name = ticker
+            
+            # Get historical data (weekly)
+            hist = stock.history(period="1y", interval="1wk")
+            
+            if hist.empty:
+                return {"ticker": ticker, "error": "No data available"}
+            
+            # Calculate current price
+            price = hist['Close'].iloc[-1]
+            
+            # Calculate technical indicators
+            tech_analysis = self._calculate_technical_indicators(hist)
+            
+            # Calculate fundamental indicators
+            fund_analysis = self._calculate_fundamental_indicators(stock, info)
+            
+            # Calculate signal
+            tech_score = self._calculate_tech_score(tech_analysis)
+            fund_check = fund_analysis['fundamental_check']
+            
+            # Determine overall signal
+            buy_signal = tech_score >= 70 and fund_check
+            sell_signal = tech_score < 40 or not tech_analysis['above_ma40']
+            
+            # Create results dictionary
+            result = {
+                "ticker": ticker,
+                "name": name,
+                "price": price,
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "tech_score": tech_score,
+                "signal": "KÖP" if buy_signal else "SÄLJ" if sell_signal else "HÅLL",
+                "buy_signal": buy_signal,
+                "sell_signal": sell_signal,
+                "fundamental_check": fund_check,
+                "technical_check": tech_score >= 60,
+                "historical_data": hist
+            }
+            
+            # Combine technical and fundamental indicators into result
+            result.update(tech_analysis)
+            result.update(fund_analysis)
+            
+            return result
+            
+        except Exception as e:
+            return {"ticker": ticker, "error": str(e)}
+    
+    def _calculate_technical_indicators(self, hist):
+        """Calculate technical indicators from historical price data"""
+        # Make sure we have enough data
+        if len(hist) < 40:
+            # If we don't have enough data, fill with some default values
+            return {
+                "above_ma40": False,
+                "above_ma4": False,
+                "rsi_above_50": False,
+                "higher_lows": False,
+                "near_52w_high": False,
+                "breakout": False
+            }
+        
+        # Calculate moving averages
+        hist['MA4'] = hist['Close'].rolling(window=self.ma_short).mean()
+        hist['MA40'] = hist['Close'].rolling(window=self.ma_long).mean()
+        
+        # Get current price and MAs
+        current_price = hist['Close'].iloc[-1]
+        ma4 = hist['MA4'].iloc[-1]
+        ma40 = hist['MA40'].iloc[-1]
+        
+        # Check if price is above moving averages
+        above_ma4 = current_price > ma4 if pd.notna(ma4) else False
+        above_ma40 = current_price > ma40 if pd.notna(ma40) else False
+        
+        # Calculate RSI
+        delta = hist['Close'].diff()
+        up = delta.clip(lower=0)
+        down = -1 * delta.clip(upper=0)
+        ema_up = up.ewm(com=self.rsi_period-1, adjust=False).mean()
+        ema_down = down.ewm(com=self.rsi_period-1, adjust=False).mean()
+        
+        # Handle division by zero
+        rs = pd.Series(np.zeros(len(ema_up)))
+        non_zero_mask = (ema_down != 0)
+        if non_zero_mask.any():
+            rs[non_zero_mask] = ema_up[non_zero_mask] / ema_down[non_zero_mask]
+        
+        hist['RSI'] = 100 - (100 / (1 + rs))
+        
+        # Check if RSI is above threshold
+        current_rsi = hist['RSI'].iloc[-1]
+        rsi_above_50 = current_rsi > self.rsi_threshold if pd.notna(current_rsi) else False
+        
+        # Check for higher lows (in the last 12 weeks)
+        try:
+            # Look at the last 12 weeks and identify local minima
+            last_weeks = hist.iloc[-13:-1] if len(hist) > 13 else hist.iloc[:-1]
+            lows = []
+            
+            for i in range(1, len(last_weeks)-1):
+                if (pd.notna(last_weeks['Low'].iloc[i]) and 
+                    pd.notna(last_weeks['Low'].iloc[i-1]) and 
+                    pd.notna(last_weeks['Low'].iloc[i+1]) and
+                    last_weeks['Low'].iloc[i] < last_weeks['Low'].iloc[i-1] and 
+                    last_weeks['Low'].iloc[i] < last_weeks['Low'].iloc[i+1]):
+                    lows.append(last_weeks['Low'].iloc[i])
+            
+            # Check if we have at least 2 lows and they're increasing
+            higher_lows = len(lows) >= 2 and all(
+                lows[i] > lows[i-1] for i in range(1, len(lows)))
+        except:
+            higher_lows = False
+        
+        # Check if price is near 52-week high
+        try:
+            high_52w = hist['High'].max()
+            near_52w_high = (current_price > high_52w * self.near_high_threshold) if pd.notna(high_52w) else False
+        except:
+            near_52w_high = False
+        
+        # Check for breakout from consolidation
+        try:
+            # Look for a period of consolidation (low volatility) followed by a price increase
+            # Calculate weekly volatility
+            hist['Weekly_Range'] = (hist['High'] - hist['Low']) / hist['Low']
+            
+            # Look at the last 6 weeks and the 6 weeks before that
+            if len(hist) >= 12:  # Ensure we have enough data
+                recent_volatility = hist['Weekly_Range'].iloc[-6:].mean()
+                previous_volatility = hist['Weekly_Range'].iloc[-12:-6].mean()
+                
+                # Recent price change
+                recent_price_change = ((hist['Close'].iloc[-1] - hist['Close'].iloc[-6]) / 
+                                       hist['Close'].iloc[-6]) if pd.notna(hist['Close'].iloc[-6]) and hist['Close'].iloc[-6] != 0 else 0
+                
+                # Breakout condition: lower recent volatility followed by strong price increase
+                breakout = (pd.notna(recent_volatility) and 
+                           pd.notna(previous_volatility) and 
+                           previous_volatility != 0 and
+                           recent_volatility < previous_volatility * 0.8 and 
+                           recent_price_change > 0.05)
+            else:
+                breakout = False
+        except:
+            breakout = False
+        
+        return {
+            "above_ma40": above_ma40,
+            "above_ma4": above_ma4,
+            "rsi_above_50": rsi_above_50,
+            "higher_lows": higher_lows,
+            "near_52w_high": near_52w_high,
+            "breakout": breakout
+        }
+    
+    def _calculate_fundamental_indicators(self, stock, info):
+        """Calculate fundamental indicators from stock info"""
+        # Initialize results dictionary with default values
+        results = {
+            "is_profitable": False,
+            "pe_ratio": None,
+            "revenue_growth": None,
+            "profit_margin": None,
+            "earnings_trend": "Okänd",
+            "fundamental_check": False
+        }
+        
+        try:
+            # Check if company is profitable
+            net_income = info.get('netIncomeToCommon')
+            results["is_profitable"] = net_income is not None and net_income > 0
+            
+            # Get P/E ratio
+            results["pe_ratio"] = info.get('trailingPE') or info.get('forwardPE')
+            
+            # Get revenue growth
+            revenue_growth = info.get('revenueGrowth')
+            if revenue_growth is not None and pd.notna(revenue_growth):
+                results["revenue_growth"] = revenue_growth
+            
+            # Get profit margin
+            profit_margin = info.get('profitMargins')
+            if profit_margin is not None and pd.notna(profit_margin):
+                results["profit_margin"] = profit_margin
+            
+            # Get earnings trend data
+            try:
+                earnings = stock.earnings
+                if not earnings.empty and len(earnings) > 1:
+                    # Calculate year-over-year earnings growth
+                    yearly_growth = earnings['Earnings'].pct_change().dropna()
+                    
+                    if len(yearly_growth) > 0:
+                        # Determine earnings trend
+                        if all(yearly_growth > 0):
+                            results["earnings_trend"] = "Ökande"
+                        elif all(yearly_growth < 0):
+                            results["earnings_trend"] = "Minskande"
+                        elif yearly_growth.iloc[-1] > 0:
+                            results["earnings_trend"] = "Nyligen ökande"
+                        else:
+                            results["earnings_trend"] = "Nyligen minskande"
+            except:
+                results["earnings_trend"] = "Data saknas"
+            
+            # Determine if fundamentals are good overall
+            # Conditions:
+            # 1. Company is profitable
+            # 2. Either has reasonable P/E or good growth
+            pe_check = results["pe_ratio"] is None or (pd.notna(results["pe_ratio"]) and results["pe_ratio"] < self.pe_max)
+            growth_check = results["revenue_growth"] is not None and pd.notna(results["revenue_growth"]) and results["revenue_growth"] > 0
+            
+            results["fundamental_check"] = results["is_profitable"] and (pe_check or growth_check)
+            
+        except Exception as e:
+            print(f"Error calculating fundamental indicators: {e}")
+            # Leave default values
+        
+        return results
+    
+    def _calculate_tech_score(self, tech_analysis):
+        """Calculate a technical score from 0-100 based on technical indicators"""
+        score = 0
+        
+        # Moving averages (most important)
+        if tech_analysis['above_ma40']:
+            score += 30
+        if tech_analysis['above_ma4']:
+            score += 15
+        
+        # RSI
+        if tech_analysis['rsi_above_50']:
+            score += 15
+        
+        # Higher lows
+        if tech_analysis['higher_lows']:
+            score += 15
+        
+        # Near 52-week high
+        if tech_analysis['near_52w_high']:
+            score += 15
+        
+        # Breakout
+        if tech_analysis['breakout']:
+            score += 10
+        
+        return score
+    
     def plot_analysis(self, analysis):
-        """Skapa diagram för analys"""
-        if "error" in analysis:
+        """
+        Create a plot visualizing the analysis results.
+        
+        Parameters:
+        - analysis: Analysis result dictionary
+        
+        Returns:
+        - Matplotlib figure
+        """
+        if "error" in analysis or "historical_data" not in analysis:
             return None
-
-        hist = analysis["history"]
-
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [3, 1]})
-        plt.style.use('ggplot')
-
-        # Prischart med MA
-        ax1.plot(hist.index, hist['Close'], label='Pris', linewidth=2)
-        ax1.plot(hist.index, hist['MA4'], label='MA4 (4v)', linestyle='--')
-        ax1.plot(hist.index, hist['MA40'], label='MA40 (40v)', linestyle=':')
-
-        if analysis["buy_signal"]:
-            ax1.scatter(hist.index[-1], hist['Close'].iloc[-1], color='green', marker='^', s=150, label='KÖP')
-        elif analysis["sell_signal"]:
-            ax1.scatter(hist.index[-1], hist['Close'].iloc[-1], color='red', marker='v', s=150, label='SÄLJ')
-
-        ax1.set_title(f"{analysis['name']} ({analysis['ticker']}) - Pris & Signal", fontsize=14)
-        ax1.set_ylabel("Pris")
-        ax1.legend()
-        ax1.grid(True, linestyle='--', alpha=0.5)
-
-        # RSI chart
-        ax2.plot(hist.index, hist['RSI'], label='RSI', color='purple', linewidth=1.5)
-        ax2.axhline(y=70, color='red', linestyle='--', alpha=0.5)
-        ax2.axhline(y=30, color='green', linestyle='--', alpha=0.5)
-        ax2.axhline(y=50, color='black', linestyle='-', alpha=0.3)
-        ax2.set_ylim(0, 100)
-        ax2.set_ylabel("RSI")
-        ax2.set_title("Relative Strength Index (RSI)")
-        ax2.legend()
-        ax2.grid(True, linestyle='--', alpha=0.5)
-
-        fig.tight_layout()
+        
+        hist = analysis["historical_data"]
+        
+        # Create the figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Plot price and moving averages
+        ax.plot(hist.index, hist['Close'], label='Price', linewidth=2)
+        
+        if 'MA4' in hist.columns and 'MA40' in hist.columns:
+            # Only plot data points that are not NaN
+            ma4_data = hist['MA4'].dropna()
+            ma40_data = hist['MA40'].dropna()
+            
+            if not ma4_data.empty:
+                ax.plot(ma4_data.index, ma4_data, label='MA4', linestyle='--')
+            
+            if not ma40_data.empty:
+                ax.plot(ma40_data.index, ma40_data, label='MA40', linestyle='-.')
+        
+        # Add title and labels
+        title = f"{analysis['name']} ({analysis['ticker']}) - {analysis['signal']}"
+        ax.set_title(title)
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Price')
+        ax.grid(True, alpha=0.3)
+        
+        # Add legend
+        ax.legend()
+        
+        # Add annotations for key metrics
+        annotation_text = (
+            f"Tech Score: {analysis['tech_score']}/100\n"
+            f"Above MA40: {'✓' if analysis['above_ma40'] else '✗'}\n"
+            f"Above MA4: {'✓' if analysis['above_ma4'] else '✗'}\n"
+            f"RSI > 50: {'✓' if analysis['rsi_above_50'] else '✗'}\n"
+            f"P/E: {analysis['pe_ratio']:.1f}" if analysis['pe_ratio'] and pd.notna(analysis['pe_ratio']) else "P/E: N/A"
+        )
+        
+        plt.figtext(0.02, 0.02, annotation_text, fontsize=9,
+                   bbox=dict(facecolor='white', alpha=0.8))
+        
+        # Adjust layout
+        plt.tight_layout()
+        
         return fig
-
 
 class WatchlistManager:
     def __init__(self, filename="watchlist.json"):
@@ -424,7 +450,6 @@ class WatchlistManager:
         return self.watchlist
 
 # Funktion för att skapa resultat-tabell
-
 
 def create_results_table(results):
     """Skapa en tabell med resultat från batch-analys"""
