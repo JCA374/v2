@@ -24,6 +24,7 @@ class MultiWatchlistManager:
         # Create cookie manager
         self.cookie_manager = CookieManager(cookie_name="watchlists_data")
         self.debug_mode = False  # For debugging
+        self.storage_status = None  # Track storage status
 
         # Initialize watchlists in session state if not present
         if 'watchlists' not in st.session_state:
@@ -34,6 +35,7 @@ class MultiWatchlistManager:
                 st.session_state.watchlists = cookie_data["watchlists"]
                 st.session_state.active_watchlist_index = cookie_data.get(
                     "active_index", 0)
+                self.storage_status = "loaded"
                 if self.debug_mode:
                     st.write(f"Loaded {len(st.session_state.watchlists)} watchlists from cookies")
             else:
@@ -44,13 +46,16 @@ class MultiWatchlistManager:
                     "stocks": []
                 }]
                 st.session_state.active_watchlist_index = 0
+                self.storage_status = "initialized"
                 
                 # For compatibility with old version, check if watchlist.json exists
                 # and import its contents as the first watchlist
                 self._import_legacy_watchlist()
                 
                 # Save the initial state to cookies
-                self._save_to_cookies()
+                success = self._save_to_cookies()
+                if success:
+                    self.storage_status = "saved"
                 if self.debug_mode:
                     st.write("Created default watchlist and saved to cookies")
 
@@ -60,17 +65,38 @@ class MultiWatchlistManager:
 
     def _save_to_cookies(self):
         """Save watchlists to cookies"""
+        # Make a clean copy of the data to avoid any reference issues
         data = {
-            "watchlists": st.session_state.watchlists,
+            "watchlists": st.session_state.watchlists.copy(),
             "active_index": st.session_state.active_watchlist_index,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        success = self.cookie_manager.save_cookie(data)
+        
+        # Try saving with 3 retries
+        max_retries = 3
+        for i in range(max_retries):
+            success = self.cookie_manager.save_cookie(data)
+            if success:
+                break
+            elif i < max_retries - 1:
+                # Wait briefly before retry
+                import time
+                time.sleep(0.1)
+                if self.debug_mode:
+                    st.write(f"Retry {i+1} saving to cookies...")
+        
+        # Update status
+        if success:
+            self.storage_status = "saved"
+        else:
+            self.storage_status = "save_failed"
+            
         if self.debug_mode:
             if success:
                 st.write(f"Saved {len(st.session_state.watchlists)} watchlists to cookies")
             else:
                 st.write("Failed to save watchlists to cookies")
+        
         return success
 
     def _import_legacy_watchlist(self):
@@ -96,6 +122,7 @@ class MultiWatchlistManager:
         st.write("## Current Watchlist State")
         st.write(f"Number of watchlists: {len(st.session_state.watchlists)}")
         st.write(f"Active watchlist index: {st.session_state.active_watchlist_index}")
+        st.write(f"Storage status: {self.storage_status}")
         
         for i, watchlist in enumerate(st.session_state.watchlists):
             st.write(f"### Watchlist {i}: {watchlist['name']}")
@@ -193,6 +220,9 @@ class MultiWatchlistManager:
         if not ticker:
             return False
 
+        # Normalize ticker (uppercase and strip whitespace)
+        ticker = ticker.strip().upper()
+
         if 0 <= index < len(self.get_all_watchlists()):
             watchlist = st.session_state.watchlists[index]
             if ticker not in watchlist["stocks"]:
@@ -252,7 +282,8 @@ class MultiWatchlistManager:
                 # Return index of new watchlist
                 return len(st.session_state.watchlists) - 1
         except Exception as e:
-            st.error(f"Fel vid import: {str(e)}")
+            if self.debug_mode:
+                st.error(f"Fel vid import: {str(e)}")
         return None
 
     def generate_share_link(self, index=None):
@@ -274,5 +305,43 @@ class MultiWatchlistManager:
             json_string = base64.b64decode(encoded_data).decode()
             return self.import_watchlist(json_string)
         except Exception as e:
-            st.error(f"Fel vid import från delad länk: {str(e)}")
+            if self.debug_mode:
+                st.error(f"Fel vid import från delad länk: {str(e)}")
             return None
+            
+    def export_all_watchlists(self):
+        """Export all watchlists as a JSON string"""
+        export_data = {
+            "watchlists": st.session_state.watchlists,
+            "active_index": st.session_state.active_watchlist_index,
+            "export_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        return json.dumps(export_data, indent=2)
+        
+    def import_all_watchlists(self, json_string):
+        """Import all watchlists from a JSON string"""
+        try:
+            data = json.loads(json_string)
+            if isinstance(data, dict) and "watchlists" in data:
+                # Replace all watchlists
+                st.session_state.watchlists = data["watchlists"]
+                
+                # Set active index if provided
+                if "active_index" in data:
+                    st.session_state.active_watchlist_index = data["active_index"]
+                    
+                # Validate active index
+                if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
+                    st.session_state.active_watchlist_index = 0
+                    
+                # Save to cookies
+                self._save_to_cookies()
+                return True
+        except Exception as e:
+            if self.debug_mode:
+                st.error(f"Error importing watchlists: {str(e)}")
+        return False
+        
+    def get_storage_status(self):
+        """Return the current storage status"""
+        return self.storage_status

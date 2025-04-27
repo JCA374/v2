@@ -10,6 +10,29 @@ import json
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
 
+# Add this to your imports
+from storage.file_storage import FileStorage
+
+# Initialize the file storage
+if 'file_storage' not in st.session_state:
+    st.session_state.file_storage = FileStorage()
+
+# In your sidebar or appropriate location:
+with st.sidebar.expander("Backup & Restore", expanded=True):
+    # Save current watchlists
+    if 'watchlists' in st.session_state:
+        st.session_state.file_storage.save_watchlists(
+            st.session_state.watchlists,
+            st.session_state.active_watchlist_index
+        )
+
+    # Load watchlists from file
+    loaded_data = st.session_state.file_storage.load_watchlists()
+    if loaded_data:
+        st.session_state.watchlists = loaded_data["watchlists"]
+        st.session_state.active_watchlist_index = loaded_data["active_index"]
+        st.success("Watchlists loaded successfully!")
+        st.button("Refresh App", on_click=lambda: st.rerun())
 
 def create_streamlit_app():
     st.set_page_config(
@@ -75,6 +98,7 @@ def handle_url_params():
             # Clear the parameter after import to avoid reimporting on refresh
             st.query_params.clear()
 
+# Add this to the render_sidebar function in app.py
 
 def render_sidebar():
     """Render the sidebar content"""
@@ -87,6 +111,10 @@ def render_sidebar():
         if st.sidebar.button("Analysera"):
             st.session_state['analyze_ticker'] = ticker
             st.rerun()
+
+    # Add storage status - ONLY if watchlist_manager is initialized
+    if 'watchlist_manager' in st.session_state:
+        render_storage_status()
 
     # Strategy information in the sidebar (shown on all tabs)
     with st.sidebar.expander("Om Värde & Momentum-strategin"):
@@ -108,27 +136,55 @@ def render_sidebar():
         Strategin följer principen "Rid vinnarna och sälj förlorarna". Vid brott under MA40, sälj direkt eller bevaka hårt. Ta förluster tidigt.
         """)
 
-    # Manual backup/restore functionality in sidebar for localStorage fallback
     st.sidebar.markdown("---")
+    st.sidebar.markdown("**Utvecklad med Python och Streamlit**")
 
-    # Test localStorage and show status
-    if st.sidebar.button("Test Storage"):
-        st.session_state.watchlist_manager.cookie_manager.test_localstorage()
+def render_storage_status():
+    """Render storage status and backup/restore functionality"""
+    manager = st.session_state.watchlist_manager
 
-    # Add manual backup/restore to sidebar (always available)
-    with st.sidebar.expander("Backup/Restore Watchlists", expanded=True):
+    # Show storage status
+    if hasattr(manager, 'storage_status') and manager.storage_status:
+        status = manager.storage_status
+
+        if status == "saved":
+            st.sidebar.success("✅ Watchlists saved to browser storage")
+        elif status == "loaded":
+            st.sidebar.success("✅ Watchlists loaded from browser storage")
+        elif status == "save_failed":
+            st.sidebar.error(
+                "❌ Failed to save watchlists - using manual backup recommended")
+        elif status == "initialized":
+            st.sidebar.info(
+                "ℹ️ New watchlist created - will be saved to browser storage")
+
+    # Add a button to test storage
+    if st.sidebar.button("Test Browser Storage"):
+        manager.cookie_manager.test_localstorage()
+
+    # Manual backup/restore functionality
+    with st.sidebar.expander("Backup & Restore Options", expanded=False):
         st.write("If automatic storage isn't working, use these options:")
 
         # Export current watchlists to JSON file
         if 'watchlists' in st.session_state:
-            data = {
-                "watchlists": st.session_state.watchlists,
-                "active_index": st.session_state.get('active_watchlist_index', 0),
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            json_data = json.dumps(data, indent=2)
+            # Use the new export_all_watchlists method if available
+            if hasattr(manager, 'export_all_watchlists'):
+                json_data = manager.export_all_watchlists()
+            else:
+                # Fallback to manual JSON creation
+                from datetime import datetime
+                import json
+                data = {
+                    "watchlists": st.session_state.watchlists,
+                    "active_index": st.session_state.get('active_watchlist_index', 0),
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                json_data = json.dumps(data, indent=2)
+
+            # Provide download button
             st.download_button(
-                "Download Backup",
+                "💾 Download Backup",
                 json_data,
                 "watchlists_backup.json",
                 "application/json"
@@ -136,26 +192,53 @@ def render_sidebar():
 
         # Import from JSON file
         st.write("Restore from backup:")
-        uploaded_file = st.file_uploader("Upload Backup File", type=['json'])
+        uploaded_file = st.file_uploader("Upload Backup File", type=[
+                                         'json'], key="sidebar_uploader")
         if uploaded_file is not None:
             try:
+                import json
                 import_data = json.loads(uploaded_file.getvalue().decode())
-                if "watchlists" in import_data:
-                    st.session_state.watchlists = import_data["watchlists"]
-                    st.session_state.active_watchlist_index = import_data.get(
-                        "active_index", 0)
-                    # Try to save to cookies as well
-                    st.session_state.watchlist_manager._save_to_cookies()
-                    st.success(
-                        f"Restored {len(import_data['watchlists'])} watchlists!")
-                    st.button("Reload App", on_click=lambda: st.rerun())
+
+                # Use the new import_all_watchlists method if available
+                if hasattr(manager, 'import_all_watchlists'):
+                    success = manager.import_all_watchlists(
+                        uploaded_file.getvalue().decode())
+                    if success:
+                        st.success(
+                            f"Restored {len(st.session_state.watchlists)} watchlists!")
+                        if st.button("Reload App", key="sidebar_reload"):
+                            st.rerun()
                 else:
-                    st.error("Invalid backup file")
+                    # Fallback to manual import
+                    if "watchlists" in import_data:
+                        st.session_state.watchlists = import_data["watchlists"]
+                        st.session_state.active_watchlist_index = import_data.get(
+                            "active_index", 0)
+                        # Try to save to cookies as well
+                        manager._save_to_cookies()
+                        st.success(
+                            f"Restored {len(import_data['watchlists'])} watchlists!")
+                        if st.button("Reload App", key="sidebar_reload2"):
+                            st.rerun()
+                    else:
+                        st.error("Invalid backup file")
             except Exception as e:
                 st.error(f"Error importing backup: {str(e)}")
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**Utvecklad med Python och Streamlit**")
+        # Storage troubleshooting info
+        with st.expander("Storage Troubleshooting", expanded=False):
+            st.write("""
+            **If watchlists aren't saving between sessions:**
+            
+            1. Make sure cookies are enabled in your browser
+            2. Try using Chrome or Firefox instead of Safari
+            3. Disable private/incognito browsing mode
+            4. Disable any browser extensions that block cookies
+            5. Use the manual backup/restore option above
+            """)
+
+
+
 
 
 if __name__ == "__main__":
