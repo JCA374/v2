@@ -10,31 +10,12 @@ import json
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
 
-# Add this to your imports
+# Import file storage
 from storage.file_storage import FileStorage
 
-# Initialize the file storage
-if 'file_storage' not in st.session_state:
-    st.session_state.file_storage = FileStorage()
-
-# In your sidebar or appropriate location:
-with st.sidebar.expander("Backup & Restore", expanded=True):
-    # Save current watchlists
-    if 'watchlists' in st.session_state:
-        st.session_state.file_storage.save_watchlists(
-            st.session_state.watchlists,
-            st.session_state.active_watchlist_index
-        )
-
-    # Load watchlists from file
-    loaded_data = st.session_state.file_storage.load_watchlists()
-    if loaded_data:
-        st.session_state.watchlists = loaded_data["watchlists"]
-        st.session_state.active_watchlist_index = loaded_data["active_index"]
-        st.success("Watchlists loaded successfully!")
-        st.button("Refresh App", on_click=lambda: st.rerun())
 
 def create_streamlit_app():
+    # THIS MUST BE THE FIRST STREAMLIT COMMAND
     st.set_page_config(
         page_title="Värde & Momentum Aktiestrategi",
         page_icon="📈",
@@ -42,6 +23,10 @@ def create_streamlit_app():
     )
 
     st.title("Värde & Momentum Aktiestrategi")
+
+    # Initialize file storage
+    if 'file_storage' not in st.session_state:
+        st.session_state.file_storage = FileStorage()
 
     # Initialize shared state objects if they don't exist
     if 'strategy' not in st.session_state:
@@ -98,7 +83,6 @@ def handle_url_params():
             # Clear the parameter after import to avoid reimporting on refresh
             st.query_params.clear()
 
-# Add this to the render_sidebar function in app.py
 
 def render_sidebar():
     """Render the sidebar content"""
@@ -115,6 +99,24 @@ def render_sidebar():
     # Add storage status - ONLY if watchlist_manager is initialized
     if 'watchlist_manager' in st.session_state:
         render_storage_status()
+
+    # Backup & Restore in sidebar
+    with st.sidebar.expander("Backup & Restore", expanded=False):
+        # Save current watchlists
+        if 'watchlists' in st.session_state and 'file_storage' in st.session_state:
+            st.session_state.file_storage.save_watchlists(
+                st.session_state.watchlists,
+                st.session_state.active_watchlist_index
+            )
+
+        # Load watchlists from file
+        if 'file_storage' in st.session_state:
+            loaded_data = st.session_state.file_storage.load_watchlists()
+            if loaded_data:
+                st.session_state.watchlists = loaded_data["watchlists"]
+                st.session_state.active_watchlist_index = loaded_data["active_index"]
+                st.success("Watchlists loaded successfully!")
+                st.button("Refresh App", on_click=lambda: st.rerun())
 
     # Strategy information in the sidebar (shown on all tabs)
     with st.sidebar.expander("Om Värde & Momentum-strategin"):
@@ -138,6 +140,7 @@ def render_sidebar():
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("**Utvecklad med Python och Streamlit**")
+
 
 def render_storage_status():
     """Render storage status and backup/restore functionality"""
@@ -163,7 +166,7 @@ def render_storage_status():
         manager.cookie_manager.test_localstorage()
 
     # Manual backup/restore functionality
-    with st.sidebar.expander("Backup & Restore Options", expanded=False):
+    with st.sidebar.expander("Storage Options", expanded=False):
         st.write("If automatic storage isn't working, use these options:")
 
         # Export current watchlists to JSON file
@@ -193,7 +196,7 @@ def render_storage_status():
         # Import from JSON file
         st.write("Restore from backup:")
         uploaded_file = st.file_uploader("Upload Backup File", type=[
-                                         'json'], key="sidebar_uploader")
+                                         'json'], key="storage_uploader")
         if uploaded_file is not None:
             try:
                 import json
@@ -206,7 +209,7 @@ def render_storage_status():
                     if success:
                         st.success(
                             f"Restored {len(st.session_state.watchlists)} watchlists!")
-                        if st.button("Reload App", key="sidebar_reload"):
+                        if st.button("Reload App", key="storage_reload"):
                             st.rerun()
                 else:
                     # Fallback to manual import
@@ -218,27 +221,12 @@ def render_storage_status():
                         manager._save_to_cookies()
                         st.success(
                             f"Restored {len(import_data['watchlists'])} watchlists!")
-                        if st.button("Reload App", key="sidebar_reload2"):
+                        if st.button("Reload App", key="storage_reload2"):
                             st.rerun()
                     else:
                         st.error("Invalid backup file")
             except Exception as e:
                 st.error(f"Error importing backup: {str(e)}")
-
-        # Storage troubleshooting info
-        with st.expander("Storage Troubleshooting", expanded=False):
-            st.write("""
-            **If watchlists aren't saving between sessions:**
-            
-            1. Make sure cookies are enabled in your browser
-            2. Try using Chrome or Firefox instead of Safari
-            3. Disable private/incognito browsing mode
-            4. Disable any browser extensions that block cookies
-            5. Use the manual backup/restore option above
-            """)
-
-
-
 
 
 if __name__ == "__main__":
