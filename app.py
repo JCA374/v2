@@ -13,9 +13,27 @@ from tabs.analysis_tab import render_analysis_tab
 # Import file storage
 from storage.file_storage import FileStorage
 
+# Import the new tab's render function at the top of app.py
+from tabs.multi_timeframe_tab import render_multi_timeframe_tab
+
+
+# app.py (partial update)
+import streamlit as st
+from strategy import ValueMomentumStrategy
+from storage.watchlist_manager import MultiWatchlistManager
+from helpers import create_results_table, get_index_constituents
+from datetime import datetime
+import json
+
+# Import tabs
+from tabs.watchlist_tab import render_watchlist_tab
+from tabs.analysis_tab import render_analysis_tab
+from tabs.scanner_tab import render_scanner_tab  # Add this import
+
+# Rest of existing imports...
+
 
 def create_streamlit_app():
-    # THIS MUST BE THE FIRST STREAMLIT COMMAND
     st.set_page_config(
         page_title="Värde & Momentum Aktiestrategi",
         page_icon="📈",
@@ -23,10 +41,6 @@ def create_streamlit_app():
     )
 
     st.title("Värde & Momentum Aktiestrategi")
-
-    # Initialize file storage
-    if 'file_storage' not in st.session_state:
-        st.session_state.file_storage = FileStorage()
 
     # Initialize shared state objects if they don't exist
     if 'strategy' not in st.session_state:
@@ -48,6 +62,8 @@ def create_streamlit_app():
     tabs = {
         "Watchlist & Batch Analysis": render_watchlist_tab,
         "Enskild Aktieanalys": render_analysis_tab,
+        "Stock Scanner": render_scanner_tab,  # Add the new tab here
+        "Multi-Timeframe Analysis": render_multi_timeframe_tab,  # Add the new tab here
     }
 
     # Create the tabs
@@ -68,6 +84,7 @@ def create_streamlit_app():
     # Render sidebar
     render_sidebar()
 
+# Rest of the file remains unchanged
 
 def handle_url_params():
     """Handle URL parameters like shared watchlist links"""

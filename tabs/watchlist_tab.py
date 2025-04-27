@@ -10,6 +10,33 @@ def render_watchlist_tab():
     strategy = st.session_state.strategy
     watchlist_manager = st.session_state.watchlist_manager
 
+    # Handle stocks selected from Scanner tab
+    if 'analyze_selected' in st.session_state and st.session_state.analyze_selected:
+        if 'batch_analysis_tickers' in st.session_state and st.session_state.batch_analysis_tickers:
+            selected_tickers = st.session_state.batch_analysis_tickers
+
+            # Show analysis in progress
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            # Callback for progress
+            def update_progress(progress, text):
+                progress_bar.progress(progress)
+                status_text.text(text)
+
+            # Run batch analysis
+            results = strategy.batch_analyze(selected_tickers, update_progress)
+            st.session_state.analysis_results = results
+
+            # Remove progress bar when done
+            progress_bar.empty()
+            status_text.empty()
+
+            st.success(f"Analyzed {len(selected_tickers)} stocks from Scanner")
+
+            # Clear the flags so it doesn't re-analyze on every rerun
+            st.session_state.analyze_selected = False
+
     # Create the layout
     col1, col2 = st.columns([1, 3])
 

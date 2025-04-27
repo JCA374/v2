@@ -80,16 +80,18 @@ class CookieManager:
                     json_data = base64.b64decode(encoded_data).decode()
                     parsed_data = json.loads(json_data)
                     if self.debug_mode:
-                        st.write(f"Data loaded from session state cache ({len(encoded_data)} bytes)")
+                        st.write(
+                            f"Data loaded from session state cache ({len(encoded_data)} bytes)")
                     return parsed_data
                 except Exception as e:
                     if self.debug_mode:
-                        st.write(f"Error decoding data from session state: {str(e)}")
+                        st.write(
+                            f"Error decoding data from session state: {str(e)}")
                     # Continue to try loading from localStorage if session state fails
 
             # Create a placeholder for the text input
             placeholder = st.empty()
-            
+
             # Hidden input to receive the callback data
             callback_data = placeholder.text_input(
                 f"{self.cookie_name}_callback",
@@ -107,34 +109,38 @@ class CookieManager:
             js = f'''
             <script>
                 (function() {{
-                    try {{
-                        const data = localStorage.getItem("{self.cookie_name}");
-                        console.log("Checking localStorage for: {self.cookie_name}");
-                        
-                        if (data) {{
-                            console.log("Found data in localStorage: {self.cookie_name} (length: " + data.length + ")");
-                            const inputElement = window.parent.document.querySelector('input[data-key="{self.cookie_name}_callback"]');
-                            if (inputElement) {{
-                                inputElement.value = data;
-                                inputElement.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                                console.log("Data sent to Streamlit callback");
-                                const statusEl = document.getElementById('load-status');
-                                if (statusEl) statusEl.innerHTML = '<span style="color:green">✓ Data loaded from localStorage</span>';
+                    // Add a small delay to ensure the input is mounted in the DOM
+                    setTimeout(function() {{
+                        try {{
+                            const data = localStorage.getItem("{self.cookie_name}");
+                            console.log("Checking localStorage for: {self.cookie_name}");
+                            
+                            if (data) {{
+                                console.log("Found data in localStorage: {self.cookie_name} (length: " + data.length + ")");
+                                // FIXED: Use document instead of window.parent.document
+                                const inputElement = document.querySelector('input[data-key="{self.cookie_name}_callback"]');
+                                if (inputElement) {{
+                                    inputElement.value = data;
+                                    inputElement.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                    console.log("Data sent to Streamlit callback");
+                                    const statusEl = document.getElementById('load-status');
+                                    if (statusEl) statusEl.innerHTML = '<span style="color:green">✓ Data loaded from localStorage</span>';
+                                }} else {{
+                                    console.error("Could not find the callback input element");
+                                    const statusEl = document.getElementById('load-status');
+                                    if (statusEl) statusEl.innerHTML = '<span style="color:red">✗ Error: Callback element not found</span>';
+                                }}
                             }} else {{
-                                console.error("Could not find the callback input element");
+                                console.log("No data found in localStorage for {self.cookie_name}");
                                 const statusEl = document.getElementById('load-status');
-                                if (statusEl) statusEl.innerHTML = '<span style="color:red">✗ Error: Callback element not found</span>';
+                                if (statusEl) statusEl.innerHTML = '<span style="color:orange">⚠ No data found in localStorage</span>';
                             }}
-                        }} else {{
-                            console.log("No data found in localStorage for {self.cookie_name}");
+                        }} catch (e) {{
+                            console.error("Error loading from localStorage:", e);
                             const statusEl = document.getElementById('load-status');
-                            if (statusEl) statusEl.innerHTML = '<span style="color:orange">⚠ No data found in localStorage</span>';
+                            if (statusEl) statusEl.innerHTML = '<span style="color:red">✗ Error loading: ' + e.message + '</span>';
                         }}
-                    }} catch (e) {{
-                        console.error("Error loading from localStorage:", e);
-                        const statusEl = document.getElementById('load-status');
-                        if (statusEl) statusEl.innerHTML = '<span style="color:red">✗ Error loading: ' + e.message + '</span>';
-                    }}
+                    }}, 100); // Add a 100ms delay to ensure the DOM is ready
                 }})();
             </script>
             <div id="load-status"></div>
@@ -150,11 +156,13 @@ class CookieManager:
                     json_data = base64.b64decode(callback_data).decode()
                     parsed_data = json.loads(json_data)
                     if self.debug_mode:
-                        st.write(f"Data loaded from localStorage via callback ({len(callback_data)} bytes)")
+                        st.write(
+                            f"Data loaded from localStorage via callback ({len(callback_data)} bytes)")
                     return parsed_data
                 except Exception as e:
                     if self.debug_mode:
-                        st.write(f"Error decoding data from localStorage: {str(e)}")
+                        st.write(
+                            f"Error decoding data from localStorage: {str(e)}")
             else:
                 if self.debug_mode:
                     st.write(f"No data received from callback")
@@ -235,10 +243,10 @@ class CookieManager:
         '''
 
         st.markdown(js, unsafe_allow_html=True)
-        
+
         # Provide a more comprehensive browser environment check
         st.write("### Browser Storage Compatibility Check")
-        
+
         js_check = '''
         <script>
         (function() {
@@ -294,6 +302,6 @@ class CookieManager:
         <div id="browser-check"></div>
         <div id="quota-info"></div>
         '''
-        
+
         st.markdown(js_check, unsafe_allow_html=True)
         st.write("Testing localStorage functionality...")
