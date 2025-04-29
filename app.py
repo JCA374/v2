@@ -248,3 +248,8 @@ def render_sidebar():
                     st.error("Invalid backup file format")
             except Exception as e:
                 st.error(f"Error restoring backup: {str(e)}")
+
+
+if __name__ == "__main__":
+    create_streamlit_app()
+
