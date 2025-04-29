@@ -127,6 +127,45 @@ def handle_url_params():
             st.query_params.clear()
 
 
+def render_storage_status():
+    """
+    Render the storage status section in the Streamlit sidebar.
+    This function displays information about the current storage or data management state.
+    """
+    import streamlit as st
+    import os
+
+    st.sidebar.header("Storage Status")
+
+    try:
+        # Example implementations - adjust based on your specific use case
+
+        # Check data directory
+        data_dir = './data'  # Adjust path as needed
+        if os.path.exists(data_dir):
+            files = os.listdir(data_dir)
+            st.sidebar.write(f"Data files: {len(files)}")
+
+            # Optional: Show file names or additional details
+            if files:
+                st.sidebar.write("Files:")
+                for file in files:
+                    st.sidebar.text(f"- {file}")
+        else:
+            st.sidebar.warning("Data directory not found")
+
+        # Optional: Check storage space
+        try:
+            total, used, free = shutil.disk_usage(data_dir)
+            st.sidebar.write(f"Total storage: {total // (2**30)} GB")
+            st.sidebar.write(f"Used storage: {used // (2**30)} GB")
+            st.sidebar.write(f"Free storage: {free // (2**30)} GB")
+        except Exception as disk_error:
+            st.sidebar.warning(f"Could not retrieve disk usage: {disk_error}")
+
+    except Exception as e:
+        st.sidebar.error(f"Error rendering storage status: {e}")
+
 def render_sidebar():
     """Render the sidebar content"""
     # Sidebar for stock analysis input in the second tab

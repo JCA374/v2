@@ -76,11 +76,29 @@ class MultiWatchlistManager:
                     self._save_to_storage()
 
         # Make sure active index is valid
-        if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
+        if not isinstance(st.session_state.get('watchlists', []), list) or len(st.session_state.get('watchlists', [])) == 0:
+            st.session_state.watchlists = [{
+                "id": str(uuid.uuid4()),
+                "name": "Min Watchlist",
+                "stocks": []
+            }]
+            st.session_state.active_watchlist_index = 0
+            self.storage_status = "reset due to invalid data"
+            self._save_to_storage()
+        elif st.session_state.get('active_watchlist_index', 0) >= len(st.session_state.get('watchlists', [])):
             st.session_state.active_watchlist_index = 0
 
     def _save_to_storage(self):
         """Save watchlists to storage (database if available, cookies as fallback)"""
+        # Ensure we have valid watchlist data before saving
+        if not isinstance(st.session_state.get('watchlists', []), list):
+            st.session_state.watchlists = [{
+                "id": str(uuid.uuid4()),
+                "name": "Min Watchlist",
+                "stocks": []
+            }]
+            st.session_state.active_watchlist_index = 0
+
         success = False
 
         # Try to save to database first if available
@@ -156,12 +174,12 @@ class MultiWatchlistManager:
     def debug_watchlists(self):
         """Debug method to print current watchlist state"""
         st.write("## Current Watchlist State")
-        st.write(f"Number of watchlists: {len(st.session_state.watchlists)}")
+        st.write(f"Number of watchlists: {len(self.get_all_watchlists())}")
         st.write(
             f"Active watchlist index: {st.session_state.active_watchlist_index}")
         st.write(f"Storage status: {self.storage_status}")
 
-        for i, watchlist in enumerate(st.session_state.watchlists):
+        for i, watchlist in enumerate(self.get_all_watchlists()):
             st.write(f"### Watchlist {i}: {watchlist['name']}")
             st.write(f"ID: {watchlist['id']}")
             st.write(
@@ -193,25 +211,59 @@ class MultiWatchlistManager:
 
     def get_all_watchlists(self):
         """Get all watchlists"""
-        return st.session_state.watchlists
+        watchlists = st.session_state.get('watchlists', [])
+        # Ensure we always return a list, even if empty
+        if not isinstance(watchlists, list):
+            watchlists = []
+            st.session_state.watchlists = watchlists
+        return watchlists
 
     def get_active_watchlist_index(self):
         """Get the index of the active watchlist"""
-        return st.session_state.active_watchlist_index
+        watchlists = self.get_all_watchlists()
+        active_index = st.session_state.get('active_watchlist_index', 0)
+
+        # Ensure the index is valid
+        if not watchlists:
+            return 0
+        if active_index >= len(watchlists):
+            active_index = 0
+            st.session_state.active_watchlist_index = 0
+        return active_index
 
     def get_active_watchlist(self):
         """Get the active watchlist object"""
-        if self.get_all_watchlists():
-            return self.get_all_watchlists()[self.get_active_watchlist_index()]
-        return {"id": "", "name": "", "stocks": []}
+        watchlists = self.get_all_watchlists()
+        if not watchlists:
+            # Create a default watchlist if none exists
+            default_watchlist = {
+                "id": str(uuid.uuid4()),
+                "name": "Min Watchlist",
+                "stocks": []
+            }
+            st.session_state.watchlists = [default_watchlist]
+            st.session_state.active_watchlist_index = 0
+            self._save_to_storage()
+            return default_watchlist
+
+        active_index = self.get_active_watchlist_index()
+        return watchlists[active_index]
 
     def get_watchlist(self):
         """Get stocks from the active watchlist (compatibility with old code)"""
-        return self.get_active_watchlist().get("stocks", [])
+        active_watchlist = self.get_active_watchlist()
+        return active_watchlist.get("stocks", [])
 
     def set_active_watchlist(self, index):
         """Set the active watchlist by index"""
-        if 0 <= index < len(self.get_all_watchlists()):
+        watchlists = self.get_all_watchlists()
+
+        # Handle empty watchlists case
+        if not watchlists:
+            return False
+
+        # Defensive check to ensure index is within bounds
+        if 0 <= index < len(watchlists):
             st.session_state.active_watchlist_index = index
             self._save_to_storage()
             return True
@@ -228,6 +280,10 @@ class MultiWatchlistManager:
             "stocks": []
         }
 
+        # Ensure watchlists exist
+        if 'watchlists' not in st.session_state or not isinstance(st.session_state.watchlists, list):
+            st.session_state.watchlists = []
+
         st.session_state.watchlists.append(new_watchlist)
         self._save_to_storage()
         # Return index of new watchlist
@@ -238,7 +294,8 @@ class MultiWatchlistManager:
         if not new_name:
             return False
 
-        if 0 <= index < len(self.get_all_watchlists()):
+        watchlists = self.get_all_watchlists()
+        if 0 <= index < len(watchlists):
             st.session_state.watchlists[index]["name"] = new_name
             self._save_to_storage()
             return True
@@ -246,9 +303,10 @@ class MultiWatchlistManager:
 
     def delete_watchlist(self, index):
         """Delete a watchlist by index"""
-        if 0 <= index < len(self.get_all_watchlists()):
+        watchlists = self.get_all_watchlists()
+        if 0 <= index < len(watchlists):
             # Don't delete if it's the only watchlist
-            if len(self.get_all_watchlists()) <= 1:
+            if len(watchlists) <= 1:
                 return False
 
             # Remove the watchlist
@@ -275,8 +333,13 @@ class MultiWatchlistManager:
         # Normalize ticker (uppercase and strip whitespace)
         ticker = ticker.strip().upper()
 
-        if 0 <= index < len(self.get_all_watchlists()):
+        watchlists = self.get_all_watchlists()
+        if 0 <= index < len(watchlists):
             watchlist = st.session_state.watchlists[index]
+            # Ensure stocks is a list
+            if not isinstance(watchlist.get("stocks", []), list):
+                watchlist["stocks"] = []
+
             if ticker not in watchlist["stocks"]:
                 watchlist["stocks"].append(ticker)
                 self._save_to_storage()
@@ -289,8 +352,14 @@ class MultiWatchlistManager:
 
     def remove_stock_from_watchlist(self, index, ticker):
         """Remove a stock from a specific watchlist"""
-        if 0 <= index < len(self.get_all_watchlists()):
+        watchlists = self.get_all_watchlists()
+        if 0 <= index < len(watchlists):
             watchlist = st.session_state.watchlists[index]
+            # Ensure stocks is a list
+            if not isinstance(watchlist.get("stocks", []), list):
+                watchlist["stocks"] = []
+                return False
+
             if ticker in watchlist["stocks"]:
                 watchlist["stocks"].remove(ticker)
                 self._save_to_storage()
@@ -302,8 +371,9 @@ class MultiWatchlistManager:
         if index is None:
             index = self.get_active_watchlist_index()
 
-        if 0 <= index < len(self.get_all_watchlists()):
-            watchlist = st.session_state.watchlists[index].copy()
+        watchlists = self.get_all_watchlists()
+        if 0 <= index < len(watchlists):
+            watchlist = watchlists[index].copy()
             # We don't need to include the ID in the export
             export_data = {
                 "name": watchlist["name"],
@@ -328,6 +398,9 @@ class MultiWatchlistManager:
                 # Add import date if not already present in name
                 if "export_date" in data and "importerad" not in new_watchlist["name"]:
                     new_watchlist["name"] += f" (importerad {data['export_date']})"
+
+                if not isinstance(st.session_state.get('watchlists', []), list):
+                    st.session_state.watchlists = []
 
                 st.session_state.watchlists.append(new_watchlist)
                 self._save_to_storage()
@@ -364,8 +437,8 @@ class MultiWatchlistManager:
     def export_all_watchlists(self):
         """Export all watchlists as a JSON string"""
         export_data = {
-            "watchlists": st.session_state.watchlists,
-            "active_index": st.session_state.active_watchlist_index,
+            "watchlists": self.get_all_watchlists(),
+            "active_index": self.get_active_watchlist_index(),
             "export_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         return json.dumps(export_data, indent=2)
@@ -380,11 +453,11 @@ class MultiWatchlistManager:
 
                 # Set active index if provided
                 if "active_index" in data:
-                    st.session_state.active_watchlist_index = data["active_index"]
-
-                # Validate active index
-                if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
-                    st.session_state.active_watchlist_index = 0
+                    active_index = data["active_index"]
+                    if 0 <= active_index < len(data["watchlists"]):
+                        st.session_state.active_watchlist_index = active_index
+                    else:
+                        st.session_state.active_watchlist_index = 0
 
                 # Save to storage
                 self._save_to_storage()
