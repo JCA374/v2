@@ -1,86 +1,165 @@
 """
-Database-backed watchlist manager that replaces the cookie-based system.
-This version uses the DatabaseStorage class for persistence.
+Watchlist manager for storing and managing stock watchlists.
+This file provides the MultiWatchlistManager class which is used in the original application.
+It now works with both cookie storage and database storage for a smooth transition.
 """
-import streamlit as st
 import uuid
+import base64
+import json
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
+import streamlit as st
+
+# Import the cookie manager for backwards compatibility
+from .cookie_manager import CookieManager
 
 
-class DBWatchlistManager:
+class MultiWatchlistManager:
     """
-    Manages multiple watchlists for a user, stored in a SQLite database.
+    Manages multiple watchlists for a user, stored in cookies/session state.
     Provides functionality for creating, renaming, deleting, and sharing watchlists.
     """
 
-    def __init__(self, db_storage=None):
-        """Initialize the watchlist manager with database storage"""
-        # Use the provided db_storage or get it from session state
-        self.db_storage = db_storage or st.session_state.get('db_storage')
+    def __init__(self):
+        """Initialize the watchlist manager with cookie storage"""
+        # Create cookie manager for backwards compatibility
+        self.cookie_manager = CookieManager(cookie_name="watchlists_data")
         self.debug_mode = False  # For debugging
+        self.storage_status = None  # Track storage status
 
-        if not self.db_storage:
-            raise ValueError(
-                "Database storage not initialized. Please initialize it first.")
+        # Check if we have database storage available
+        self.db_storage = st.session_state.get('db_storage', None)
 
         # Initialize watchlists in session state if not present
         if 'watchlists' not in st.session_state:
-            # Try to load from database first
-            db_data = self.db_storage.load_watchlists()
+            watchlists_loaded = False
 
-            if db_data and "watchlists" in db_data:
-                st.session_state.watchlists = db_data["watchlists"]
-                st.session_state.active_watchlist_index = db_data.get(
-                    "active_index", 0)
-                if self.debug_mode:
-                    st.write(
-                        f"Loaded {len(st.session_state.watchlists)} watchlists from database")
-            else:
-                # Create default structure with one empty watchlist
-                st.session_state.watchlists = [{
-                    "id": str(uuid.uuid4()),
-                    "name": "Min Watchlist",
-                    "stocks": []
-                }]
-                st.session_state.active_watchlist_index = 0
+            # Try to load from database first if available
+            if self.db_storage:
+                db_data = self.db_storage.load_watchlists()
+                if db_data and "watchlists" in db_data:
+                    st.session_state.watchlists = db_data["watchlists"]
+                    st.session_state.active_watchlist_index = db_data.get(
+                        "active_index", 0)
+                    self.storage_status = "loaded from database"
+                    watchlists_loaded = True
+                    if self.debug_mode:
+                        st.write(
+                            f"Loaded {len(st.session_state.watchlists)} watchlists from database")
 
-                # Save the initial state to database
-                self._save_to_database()
-                if self.debug_mode:
-                    st.write("Created default watchlist and saved to database")
+            # Fall back to cookies if database didn't work
+            if not watchlists_loaded:
+                # Try to load from cookies
+                cookie_data = self.cookie_manager.load_cookie()
+
+                if cookie_data and "watchlists" in cookie_data:
+                    st.session_state.watchlists = cookie_data["watchlists"]
+                    st.session_state.active_watchlist_index = cookie_data.get(
+                        "active_index", 0)
+                    self.storage_status = "loaded from cookies"
+                    if self.debug_mode:
+                        st.write(
+                            f"Loaded {len(st.session_state.watchlists)} watchlists from cookies")
+                else:
+                    # Create default structure with one empty watchlist
+                    st.session_state.watchlists = [{
+                        "id": str(uuid.uuid4()),
+                        "name": "Min Watchlist",
+                        "stocks": []
+                    }]
+                    st.session_state.active_watchlist_index = 0
+                    self.storage_status = "initialized"
+
+                    # For compatibility with old version, check if watchlist.json exists
+                    self._import_legacy_watchlist()
+
+                    # Save the initial state to storage
+                    self._save_to_storage()
 
         # Make sure active index is valid
         if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
             st.session_state.active_watchlist_index = 0
 
-    def _save_to_database(self) -> bool:
-        """Save watchlists to the database"""
-        if not self.db_storage:
+    def _save_to_storage(self):
+        """Save watchlists to storage (database if available, cookies as fallback)"""
+        success = False
+
+        # Try to save to database first if available
+        if self.db_storage:
+            try:
+                success = self.db_storage.save_watchlists(
+                    st.session_state.watchlists,
+                    st.session_state.active_watchlist_index
+                )
+                if success:
+                    self.storage_status = "saved to database"
+                    if self.debug_mode:
+                        st.write(
+                            f"Saved {len(st.session_state.watchlists)} watchlists to database")
+            except Exception as e:
+                if self.debug_mode:
+                    st.error(f"Error saving to database: {str(e)}")
+                success = False
+
+        # Fall back to cookies if database save failed or not available
+        if not success:
+            # Make a clean copy of the data to avoid any reference issues
+            data = {
+                "watchlists": st.session_state.watchlists.copy(),
+                "active_index": st.session_state.active_watchlist_index,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+
+            # Try saving with 3 retries
+            max_retries = 3
+            for i in range(max_retries):
+                success = self.cookie_manager.save_cookie(data)
+                if success:
+                    self.storage_status = "saved to cookies"
+                    break
+                elif i < max_retries - 1:
+                    # Wait briefly before retry
+                    import time
+                    time.sleep(0.1)
+                    if self.debug_mode:
+                        st.write(f"Retry {i+1} saving to cookies...")
+
             if self.debug_mode:
-                st.error("Database storage not available")
-            return False
-
-        success = self.db_storage.save_watchlists(
-            st.session_state.watchlists,
-            st.session_state.active_watchlist_index
-        )
-
-        if self.debug_mode:
-            if success:
-                st.write(
-                    f"Saved {len(st.session_state.watchlists)} watchlists to database")
-            else:
-                st.write("Failed to save watchlists to database")
+                if success:
+                    st.write(
+                        f"Saved {len(st.session_state.watchlists)} watchlists to cookies")
+                else:
+                    st.write("Failed to save watchlists to cookies")
+                    self.storage_status = "save_failed"
 
         return success
 
-    def debug_watchlists(self) -> None:
+    def _import_legacy_watchlist(self):
+        """Import legacy watchlist.json if it exists"""
+        try:
+            import os
+            if os.path.exists("watchlist.json"):
+                with open("watchlist.json", 'r') as f:
+                    legacy_stocks = json.load(f)
+
+                    # If we have a legacy watchlist and no stocks in the first watchlist
+                    if legacy_stocks and len(st.session_state.watchlists) > 0 and not st.session_state.watchlists[0]["stocks"]:
+                        st.session_state.watchlists[0]["stocks"] = legacy_stocks
+                        self._save_to_storage()
+                        if self.debug_mode:
+                            st.write(
+                                f"Imported {len(legacy_stocks)} stocks from legacy watchlist")
+        except Exception as e:
+            if self.debug_mode:
+                st.write(f"Error importing legacy watchlist: {str(e)}")
+            pass
+
+    def debug_watchlists(self):
         """Debug method to print current watchlist state"""
         st.write("## Current Watchlist State")
         st.write(f"Number of watchlists: {len(st.session_state.watchlists)}")
         st.write(
             f"Active watchlist index: {st.session_state.active_watchlist_index}")
+        st.write(f"Storage status: {self.storage_status}")
 
         for i, watchlist in enumerate(st.session_state.watchlists):
             st.write(f"### Watchlist {i}: {watchlist['name']}")
@@ -88,44 +167,57 @@ class DBWatchlistManager:
             st.write(
                 f"Stocks: {', '.join(watchlist['stocks']) if watchlist['stocks'] else 'None'}")
 
-        # Also check what's saved in database
-        db_data = self.db_storage.load_watchlists() if self.db_storage else None
-        if db_data and "watchlists" in db_data:
-            st.write("### Database Data")
-            st.write(
-                f"Number of watchlists in database: {len(db_data['watchlists'])}")
-            st.write(
-                f"Active index in database: {db_data.get('active_index', 'Not set')}")
-        else:
-            st.write("No watchlist data found in database!")
+        # Check what's in different storage systems
+        if self.db_storage:
+            db_data = self.db_storage.load_watchlists()
+            if db_data and "watchlists" in db_data:
+                st.write("### Database Data")
+                st.write(
+                    f"Number of watchlists in database: {len(db_data['watchlists'])}")
+                st.write(
+                    f"Active index in database: {db_data.get('active_index', 'Not set')}")
+            else:
+                st.write("No watchlist data found in database!")
 
-    def get_all_watchlists(self) -> List[Dict[str, Any]]:
+        # Also check what's saved in cookies
+        cookie_data = self.cookie_manager.load_cookie()
+        if cookie_data and "watchlists" in cookie_data:
+            st.write("### Cookie Data")
+            st.write(
+                f"Number of watchlists in cookie: {len(cookie_data['watchlists'])}")
+            st.write(
+                f"Active index in cookie: {cookie_data.get('active_index', 'Not set')}")
+            st.write(f"Timestamp: {cookie_data.get('timestamp', 'Not set')}")
+        else:
+            st.write("No watchlist data found in cookies!")
+
+    def get_all_watchlists(self):
         """Get all watchlists"""
         return st.session_state.watchlists
 
-    def get_active_watchlist_index(self) -> int:
+    def get_active_watchlist_index(self):
         """Get the index of the active watchlist"""
         return st.session_state.active_watchlist_index
 
-    def get_active_watchlist(self) -> Dict[str, Any]:
+    def get_active_watchlist(self):
         """Get the active watchlist object"""
         if self.get_all_watchlists():
             return self.get_all_watchlists()[self.get_active_watchlist_index()]
         return {"id": "", "name": "", "stocks": []}
 
-    def get_watchlist(self) -> List[str]:
+    def get_watchlist(self):
         """Get stocks from the active watchlist (compatibility with old code)"""
         return self.get_active_watchlist().get("stocks", [])
 
-    def set_active_watchlist(self, index: int) -> bool:
+    def set_active_watchlist(self, index):
         """Set the active watchlist by index"""
         if 0 <= index < len(self.get_all_watchlists()):
             st.session_state.active_watchlist_index = index
-            self._save_to_database()
+            self._save_to_storage()
             return True
         return False
 
-    def add_watchlist(self, name: str = "Ny Watchlist") -> int:
+    def add_watchlist(self, name="Ny Watchlist"):
         """Add a new watchlist"""
         if not name:
             name = "Ny Watchlist"
@@ -137,22 +229,22 @@ class DBWatchlistManager:
         }
 
         st.session_state.watchlists.append(new_watchlist)
-        self._save_to_database()
+        self._save_to_storage()
         # Return index of new watchlist
         return len(st.session_state.watchlists) - 1
 
-    def rename_watchlist(self, index: int, new_name: str) -> bool:
+    def rename_watchlist(self, index, new_name):
         """Rename a watchlist"""
         if not new_name:
             return False
 
         if 0 <= index < len(self.get_all_watchlists()):
             st.session_state.watchlists[index]["name"] = new_name
-            self._save_to_database()
+            self._save_to_storage()
             return True
         return False
 
-    def delete_watchlist(self, index: int) -> bool:
+    def delete_watchlist(self, index):
         """Delete a watchlist by index"""
         if 0 <= index < len(self.get_all_watchlists()):
             # Don't delete if it's the only watchlist
@@ -167,15 +259,15 @@ class DBWatchlistManager:
                 st.session_state.active_watchlist_index = max(
                     0, st.session_state.active_watchlist_index - 1)
 
-            self._save_to_database()
+            self._save_to_storage()
             return True
         return False
 
-    def add_stock(self, ticker: str) -> bool:
+    def add_stock(self, ticker):
         """Add a stock to the active watchlist (compatibility with old code)"""
         return self.add_stock_to_watchlist(self.get_active_watchlist_index(), ticker)
 
-    def add_stock_to_watchlist(self, index: int, ticker: str) -> bool:
+    def add_stock_to_watchlist(self, index, ticker):
         """Add a stock to a specific watchlist"""
         if not ticker:
             return False
@@ -187,25 +279,25 @@ class DBWatchlistManager:
             watchlist = st.session_state.watchlists[index]
             if ticker not in watchlist["stocks"]:
                 watchlist["stocks"].append(ticker)
-                self._save_to_database()
+                self._save_to_storage()
                 return True
         return False
 
-    def remove_stock(self, ticker: str) -> bool:
+    def remove_stock(self, ticker):
         """Remove a stock from the active watchlist (compatibility with old code)"""
         return self.remove_stock_from_watchlist(self.get_active_watchlist_index(), ticker)
 
-    def remove_stock_from_watchlist(self, index: int, ticker: str) -> bool:
+    def remove_stock_from_watchlist(self, index, ticker):
         """Remove a stock from a specific watchlist"""
         if 0 <= index < len(self.get_all_watchlists()):
             watchlist = st.session_state.watchlists[index]
             if ticker in watchlist["stocks"]:
                 watchlist["stocks"].remove(ticker)
-                self._save_to_database()
+                self._save_to_storage()
                 return True
         return False
 
-    def export_watchlist(self, index: Optional[int] = None) -> Optional[str]:
+    def export_watchlist(self, index=None):
         """Export a watchlist as a JSON string"""
         if index is None:
             index = self.get_active_watchlist_index()
@@ -216,16 +308,14 @@ class DBWatchlistManager:
             export_data = {
                 "name": watchlist["name"],
                 "stocks": watchlist["stocks"],
-                "export_date": datetime.now().isoformat()
+                "export_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            import json
             return json.dumps(export_data)
         return None
 
-    def import_watchlist(self, json_string: str) -> Optional[int]:
+    def import_watchlist(self, json_string):
         """Import a watchlist from a JSON string"""
         try:
-            import json
             data = json.loads(json_string)
             if isinstance(data, dict) and "name" in data and "stocks" in data:
                 # Create new watchlist with imported data
@@ -240,7 +330,7 @@ class DBWatchlistManager:
                     new_watchlist["name"] += f" (importerad {data['export_date']})"
 
                 st.session_state.watchlists.append(new_watchlist)
-                self._save_to_database()
+                self._save_to_storage()
                 # Return index of new watchlist
                 return len(st.session_state.watchlists) - 1
         except Exception as e:
@@ -248,7 +338,7 @@ class DBWatchlistManager:
                 st.error(f"Fel vid import: {str(e)}")
         return None
 
-    def generate_share_link(self, index: Optional[int] = None) -> Optional[str]:
+    def generate_share_link(self, index=None):
         """Generate a shareable link for a watchlist"""
         if index is None:
             index = self.get_active_watchlist_index()
@@ -256,16 +346,14 @@ class DBWatchlistManager:
         json_data = self.export_watchlist(index)
         if json_data:
             # Encode the JSON data to be used in a URL
-            import base64
             encoded = base64.b64encode(json_data.encode()).decode()
             return f"?shared_watchlist={encoded}"
         return None
 
-    def import_from_share_link(self, encoded_data: str) -> Optional[int]:
+    def import_from_share_link(self, encoded_data):
         """Import a watchlist from an encoded share link"""
         try:
             # Decode the data from the URL
-            import base64
             json_string = base64.b64decode(encoded_data).decode()
             return self.import_watchlist(json_string)
         except Exception as e:
@@ -273,20 +361,18 @@ class DBWatchlistManager:
                 st.error(f"Fel vid import från delad länk: {str(e)}")
             return None
 
-    def export_all_watchlists(self) -> str:
+    def export_all_watchlists(self):
         """Export all watchlists as a JSON string"""
         export_data = {
             "watchlists": st.session_state.watchlists,
             "active_index": st.session_state.active_watchlist_index,
-            "export_date": datetime.now().isoformat()
+            "export_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        import json
         return json.dumps(export_data, indent=2)
 
-    def import_all_watchlists(self, json_string: str) -> bool:
+    def import_all_watchlists(self, json_string):
         """Import all watchlists from a JSON string"""
         try:
-            import json
             data = json.loads(json_string)
             if isinstance(data, dict) and "watchlists" in data:
                 # Replace all watchlists
@@ -300,10 +386,14 @@ class DBWatchlistManager:
                 if st.session_state.active_watchlist_index >= len(st.session_state.watchlists):
                     st.session_state.active_watchlist_index = 0
 
-                # Save to database
-                self._save_to_database()
+                # Save to storage
+                self._save_to_storage()
                 return True
         except Exception as e:
             if self.debug_mode:
                 st.error(f"Error importing watchlists: {str(e)}")
         return False
+
+    def get_storage_status(self):
+        """Return the current storage status"""
+        return self.storage_status
