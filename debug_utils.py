@@ -159,7 +159,7 @@ def test_cookie_storage():
     test_data = {"test": test_value, "timestamp": str(datetime.now())}
 
     # Create a test cookie manager
-    from storage.cookie_manager import CookieManager
+    from old.cookie_manager import CookieManager
     test_manager = CookieManager(cookie_name="test_cookie")
     test_manager.debug_mode = True
 

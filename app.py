@@ -2,15 +2,20 @@
 import streamlit as st
 from strategy import ValueMomentumStrategy
 from storage.watchlist_manager import MultiWatchlistManager
+from storage.db_storage import DatabaseStorage  # Import the new database storage
 from helpers import create_results_table, get_index_constituents
 from datetime import datetime
 import json
+import os
+import uuid  # Added for generating unique IDs
 
 # Import tabs
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
 from tabs.scanner_tab import render_scanner_tab
 from tabs.multi_timeframe_tab import render_multi_timeframe_tab
+# Import the new storage settings tab
+from tabs.storage_settings_tab import render_storage_settings_tab
 
 # Import file storage
 from storage.file_storage import FileStorage
@@ -25,10 +30,36 @@ def create_streamlit_app():
 
     st.title("Värde & Momentum Aktiestrategi")
 
+    # Initialize database storage if it doesn't exist
+    if 'db_storage' not in st.session_state:
+        # Use custom path from session state if available, otherwise use default
+        db_path = st.session_state.get('db_path', None)
+        st.session_state.db_storage = DatabaseStorage(db_path)
+        # Enable debug mode initially to diagnose issues
+        st.session_state.db_storage.debug_mode = True
+
     # Initialize shared state objects if they don't exist
     if 'strategy' not in st.session_state:
         st.session_state.strategy = ValueMomentumStrategy()
 
+    # Load watchlists from database if they're not in session state
+    if 'watchlists' not in st.session_state:
+        db_data = st.session_state.db_storage.load_watchlists()
+        if db_data and 'watchlists' in db_data:
+            st.session_state.watchlists = db_data['watchlists']
+            st.session_state.active_watchlist_index = db_data.get(
+                'active_index', 0)
+            st.success("Watchlists loaded from database")
+        else:
+            # Default empty watchlist if nothing in database
+            st.session_state.watchlists = [{
+                "id": str(uuid.uuid4()),
+                "name": "Min Watchlist",
+                "stocks": []
+            }]
+            st.session_state.active_watchlist_index = 0
+
+    # Initialize watchlist manager
     if 'watchlist_manager' not in st.session_state:
         st.session_state.watchlist_manager = MultiWatchlistManager()
         # Enable debug mode initially to diagnose issues
@@ -51,6 +82,8 @@ def create_streamlit_app():
         "Enskild Aktieanalys": render_analysis_tab,
         "Stock Scanner": render_scanner_tab,
         "Multi-Timeframe Analysis": render_multi_timeframe_tab,
+        # Add the new storage settings tab
+        "Storage Settings": render_storage_settings_tab,
     }
 
     # Create the tabs
@@ -70,6 +103,13 @@ def create_streamlit_app():
 
     # Render sidebar
     render_sidebar()
+
+    # Save any changes to the database when app state changes
+    if 'watchlists' in st.session_state:
+        st.session_state.db_storage.save_watchlists(
+            st.session_state.watchlists,
+            st.session_state.get('active_watchlist_index', 0)
+        )
 
 
 def handle_url_params():
@@ -103,134 +143,69 @@ def render_sidebar():
     if 'watchlist_manager' in st.session_state:
         render_storage_status()
 
-    # Backup & Restore in sidebar
-    with st.sidebar.expander("Backup & Restore", expanded=False):
-        # Save current watchlists
-        if 'watchlists' in st.session_state and 'file_storage' in st.session_state:
-            st.session_state.file_storage.save_watchlists(
-                st.session_state.watchlists,
-                st.session_state.active_watchlist_index
-            )
+    # Add database status indicator in sidebar
+    if 'db_storage' in st.session_state:
+        db_info = st.session_state.db_storage.get_database_info()
+        with st.sidebar.expander("Database Status", expanded=False):
+            st.info(
+                f"Database: {os.path.basename(db_info.get('path', 'Unknown'))}")
+            st.write(f"Location: {db_info.get('path', 'Unknown')}")
+            st.write(f"Size: {db_info.get('size_formatted', '0 KB')}")
+            st.write(f"Watchlists: {db_info.get('watchlist_count', 0)}")
+            st.write(f"Total stocks: {db_info.get('stock_count', 0)}")
 
-        # Load watchlists from file
-        if 'file_storage' in st.session_state:
-            loaded_data = st.session_state.file_storage.load_watchlists()
-            if loaded_data:
-                st.session_state.watchlists = loaded_data["watchlists"]
-                st.session_state.active_watchlist_index = loaded_data["active_index"]
-                st.success("Watchlists loaded successfully!")
-                st.button("Refresh App", on_click=lambda: st.rerun())
+            if st.button("Open Storage Settings", key="open_storage_settings"):
+                # Set the current tab to Storage Settings
+                tab_index = list(["Watchlist & Batch Analysis", "Enskild Aktieanalys",
+                                  "Stock Scanner", "Multi-Timeframe Analysis",
+                                  "Storage Settings"]).index("Storage Settings")
+                st.session_state['current_tab'] = "Storage Settings"
+                st.rerun()
 
-    # Strategy information in the sidebar (shown on all tabs)
-    with st.sidebar.expander("Om Värde & Momentum-strategin"):
-        st.write("""
-        **Värde & Momentum-strategin** kombinerar fundamentala och tekniska kriterier för aktier:
-        
-        **Fundamentala kriterier:**
-        * Bolaget ska tjäna pengar
-        * Bolaget ska öka omsättning och vinst, eller öka omsättning med stabil vinstmarginal
-        * Bolaget ska handlas till ett rimligt P/E-tal jämfört med sig själv
-        
-        **Tekniska kriterier:**
-        * Bolaget ska sätta högre bottnar
-        * Bolaget ska handlas över MA40 (veckovis) och gärna MA4 för extra momentum
-        * Bolaget ska ha ett RSI över 50
-        * Starkt om bolaget bryter upp ur en konsolideringsfas
-        * Starkt om bolaget handlas till sin högsta 52-veckorsnivå
-        
-        Strategin följer principen "Rid vinnarna och sälj förlorarna". Vid brott under MA40, sälj direkt eller bevaka hårt. Ta förluster tidigt.
-        """)
+    # Quick backup option in sidebar
+    with st.sidebar.expander("Quick Backup", expanded=False):
+        if 'watchlists' in st.session_state and 'db_storage' in st.session_state:
+            # Generate backup JSON for download
+            data = {
+                "watchlists": st.session_state.watchlists,
+                "active_index": st.session_state.active_watchlist_index,
+                "export_date": datetime.now().isoformat()
+            }
+            json_data = json.dumps(data, indent=2)
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**Utvecklad med Python och Streamlit**")
-
-
-def render_storage_status():
-    """Render storage status and backup/restore functionality"""
-    manager = st.session_state.watchlist_manager
-
-    # Show storage status
-    if hasattr(manager, 'storage_status') and manager.storage_status:
-        status = manager.storage_status
-
-        if status == "saved":
-            st.sidebar.success("✅ Watchlists saved to browser storage")
-        elif status == "loaded":
-            st.sidebar.success("✅ Watchlists loaded from browser storage")
-        elif status == "save_failed":
-            st.sidebar.error(
-                "❌ Failed to save watchlists - using manual backup recommended")
-        elif status == "initialized":
-            st.sidebar.info(
-                "ℹ️ New watchlist created - will be saved to browser storage")
-
-    # Add a button to test storage
-    if st.sidebar.button("Test Browser Storage"):
-        manager.cookie_manager.test_localstorage()
-
-    # Manual backup/restore functionality
-    with st.sidebar.expander("Storage Options", expanded=False):
-        st.write("If automatic storage isn't working, use these options:")
-
-        # Export current watchlists to JSON file
-        if 'watchlists' in st.session_state:
-            # Use the new export_all_watchlists method if available
-            if hasattr(manager, 'export_all_watchlists'):
-                json_data = manager.export_all_watchlists()
-            else:
-                # Fallback to manual JSON creation
-                from datetime import datetime
-                import json
-                data = {
-                    "watchlists": st.session_state.watchlists,
-                    "active_index": st.session_state.get('active_watchlist_index', 0),
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                json_data = json.dumps(data, indent=2)
-
-            # Provide download button
             st.download_button(
-                "💾 Download Backup",
+                "Download Backup File",
                 json_data,
-                "watchlists_backup.json",
-                "application/json"
+                file_name=f"watchlists_backup_{datetime.now().strftime('%Y%m%d')}.json",
+                mime="application/json"
             )
 
-        # Import from JSON file
-        st.write("Restore from backup:")
-        uploaded_file = st.file_uploader("Upload Backup File", type=[
-                                         'json'], key="storage_uploader")
+            st.info("For more options, go to the Storage Settings tab")
+
+        # Upload option
+        uploaded_file = st.file_uploader(
+            "Restore from backup",
+            type=["json"],
+            key="sidebar_uploader",
+            help="Upload a backup file to restore your watchlists"
+        )
+
         if uploaded_file is not None:
             try:
-                import json
-                import_data = json.loads(uploaded_file.getvalue().decode())
-
-                # Use the new import_all_watchlists method if available
-                if hasattr(manager, 'import_all_watchlists'):
-                    success = manager.import_all_watchlists(
-                        uploaded_file.getvalue().decode())
-                    if success:
-                        st.success(
-                            f"Restored {len(st.session_state.watchlists)} watchlists!")
-                        if st.button("Reload App", key="storage_reload"):
-                            st.rerun()
+                data = json.loads(uploaded_file.getvalue().decode())
+                if "watchlists" in data:
+                    # Save to database
+                    st.session_state.db_storage.save_watchlists(
+                        data["watchlists"],
+                        data.get("active_index", 0)
+                    )
+                    # Update session state
+                    st.session_state.watchlists = data["watchlists"]
+                    st.session_state.active_watchlist_index = data.get(
+                        "active_index", 0)
+                    st.success("Watchlists restored successfully!")
+                    st.button("Reload App", on_click=lambda: st.rerun())
                 else:
-                    # Fallback to manual import
-                    if "watchlists" in import_data:
-                        st.session_state.watchlists = import_data["watchlists"]
-                        st.session_state.active_watchlist_index = import_data.get(
-                            "active_index", 0)
-                        # Try to save to cookies as well
-                        manager._save_to_cookies()
-                        st.success(
-                            f"Restored {len(import_data['watchlists'])} watchlists!")
-                        if st.button("Reload App", key="storage_reload2"):
-                            st.rerun()
-                    else:
-                        st.error("Invalid backup file")
+                    st.error("Invalid backup file format")
             except Exception as e:
-                st.error(f"Error importing backup: {str(e)}")
-
-
-if __name__ == "__main__":
-    create_streamlit_app()
+                st.error(f"Error restoring backup: {str(e)}")
