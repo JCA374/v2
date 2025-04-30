@@ -323,12 +323,25 @@ class MultiWatchlistManager:
 
     def add_stock(self, ticker):
         """Add a stock to the active watchlist (compatibility with old code)"""
-        return self.add_stock_to_watchlist(self.get_active_watchlist_index(), ticker)
+        # First save the current tab
+        current_tab = st.session_state.get('current_tab')
+
+        result = self.add_stock_to_watchlist(
+            self.get_active_watchlist_index(), ticker)
+
+        # After the operation, ensure the current tab is preserved
+        if current_tab:
+            st.session_state['current_tab'] = current_tab
+
+        return result
 
     def add_stock_to_watchlist(self, index, ticker):
         """Add a stock to a specific watchlist"""
         if not ticker:
             return False
+
+        # Save current tab
+        current_tab = st.session_state.get('current_tab')
 
         # Normalize ticker (uppercase and strip whitespace)
         ticker = ticker.strip().upper()
@@ -343,27 +356,63 @@ class MultiWatchlistManager:
             if ticker not in watchlist["stocks"]:
                 watchlist["stocks"].append(ticker)
                 self._save_to_storage()
+
+                # Preserve current tab
+                if current_tab:
+                    st.session_state['current_tab'] = current_tab
+
                 return True
+
+        # Preserve current tab even if operation failed
+        if current_tab:
+            st.session_state['current_tab'] = current_tab
+
         return False
 
     def remove_stock(self, ticker):
         """Remove a stock from the active watchlist (compatibility with old code)"""
-        return self.remove_stock_from_watchlist(self.get_active_watchlist_index(), ticker)
+        # Save current tab
+        current_tab = st.session_state.get('current_tab')
+
+        result = self.remove_stock_from_watchlist(
+            self.get_active_watchlist_index(), ticker)
+
+        # Restore current tab
+        if current_tab:
+            st.session_state['current_tab'] = current_tab
+
+        return result
 
     def remove_stock_from_watchlist(self, index, ticker):
         """Remove a stock from a specific watchlist"""
+        # Save current tab
+        current_tab = st.session_state.get('current_tab')
+
         watchlists = self.get_all_watchlists()
         if 0 <= index < len(watchlists):
             watchlist = st.session_state.watchlists[index]
             # Ensure stocks is a list
             if not isinstance(watchlist.get("stocks", []), list):
                 watchlist["stocks"] = []
+                # Restore tab even if we failed
+                if current_tab:
+                    st.session_state['current_tab'] = current_tab
                 return False
 
             if ticker in watchlist["stocks"]:
                 watchlist["stocks"].remove(ticker)
                 self._save_to_storage()
+
+                # Restore current tab
+                if current_tab:
+                    st.session_state['current_tab'] = current_tab
+
                 return True
+
+        # Restore current tab even if operation failed
+        if current_tab:
+            st.session_state['current_tab'] = current_tab
+
         return False
 
     def export_watchlist(self, index=None):

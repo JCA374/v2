@@ -13,3 +13,4 @@ htmlcov/
 
 old/
 notebooks/old/
+.devcontainer
