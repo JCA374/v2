@@ -11,88 +11,22 @@ import logging
 
 
 class ValueMomentumStrategy:
-    """
-    Implementation of the Value & Momentum stock analysis strategy.
-    Combines fundamental analysis with technical indicators to identify strong stocks.
-    """
+    # … your __init__ etc.
 
-    def __init__(self):
-        """Initialize the strategy with default parameters"""
-        # Technical parameters
-        self.ma_short = 4  # 4-week moving average
-        self.ma_long = 40  # 40-week moving average
-        self.rsi_period = 14  # RSI calculation period
-        self.rsi_threshold = 50  # RSI threshold for bullish signal
-        self.near_high_threshold = 0.85  # % of 52-week high to consider "near"
+    def _fetch_info(self, ticker):
+        """Fetches yf.Ticker.info or raises RuntimeError."""
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        if not isinstance(info, dict):
+            raise RuntimeError("No basic info returned")
+        return stock, info
 
-        # Fundamental parameters
-        self.pe_max = 35  # Maximum P/E ratio for value
-
-        # Configure yfinance logging (reduce verbosity)
-        logging.getLogger('yfinance').setLevel(logging.ERROR)
-
-    def batch_analyze(self, tickers, progress_callback=None):
-        """
-        Analyze multiple stocks and return a list of analysis results.
-        
-        Parameters:
-        - tickers: List of stock ticker symbols
-        - progress_callback: Function to call with progress updates (0-1.0 and text)
-        
-        Returns:
-        - List of analysis result dictionaries
-        """
-        results = []
-        failed_analyses = []  # Track failures for reporting
-
-        # Store failed analyses in session state if it doesn't exist
-        import streamlit as st
-        if 'failed_analyses' not in st.session_state:
-            st.session_state.failed_analyses = []
-
-        for i, ticker in enumerate(tickers):
-            # Update progress
-            if progress_callback:
-                progress = i / len(tickers)
-                progress_callback(
-                    progress, f"Analyserar {ticker}... ({i+1}/{len(tickers)})")
-
-            try:
-                # Analyze this stock
-                analysis = self.analyze_stock(ticker)
-
-                # Check if the result contains an error
-                if isinstance(analysis, dict) and "error" in analysis:
-                    error_info = {
-                        "ticker": ticker,
-                        "error": analysis["error"],
-                        "error_message": f"Fel vid analys: {analysis['error']}"
-                    }
-                    results.append(error_info)
-                    failed_analyses.append(error_info)
-                    print(f"Error analyzing {ticker}: {analysis['error']}")
-                else:
-                    # Valid result, add it to results
-                    results.append(analysis)
-            except Exception as e:
-                # Add error information
-                error_info = {
-                    "ticker": ticker,
-                    "error": str(e),
-                    "error_message": f"Fel vid analys: {str(e)}"
-                }
-                results.append(error_info)
-                failed_analyses.append(error_info)
-                print(f"Exception analyzing {ticker}: {str(e)}")
-
-        # Update progress to 100%
-        if progress_callback:
-            progress_callback(1.0, "Analys klar!")
-
-        # Store failed analyses in session state for display
-        st.session_state.failed_analyses = failed_analyses
-
-        return results
+    def _fetch_history(self, stock, period="1y", interval="1wk"):
+        """Fetches history DataFrame or raises RuntimeError."""
+        hist = stock.history(period=period, interval=interval)
+        if hist is None or hist.empty:
+            raise RuntimeError("No historical data available")
+        return hist
 
     def analyze_stock(self, ticker):
         """
@@ -121,7 +55,11 @@ class ValueMomentumStrategy:
             hist = stock.history(period="1y", interval="1wk")
 
             if hist.empty:
-                return {"ticker": ticker, "error": "No data available"}
+                return {
+                    "ticker": ticker,
+                    "error": "No data available",
+                    "error_message": f"Ingen data tillgänglig för {ticker}"
+                }
 
             # Calculate current price
             price = hist['Close'].iloc[-1]
@@ -162,8 +100,68 @@ class ValueMomentumStrategy:
             return result
 
         except Exception as e:
-            return {"ticker": ticker, "error": str(e)}
+            return {
+                "ticker": ticker,
+                "error": str(e),
+                "error_message": f"Fel vid analys: {str(e)}"
+            }
 
+    def batch_analyze(self, tickers, progress_callback=None):
+        """
+        Analyze multiple stocks and return a list of analysis results.
+        
+        Parameters:
+        - tickers: List of stock ticker symbols
+        - progress_callback: Function to call with progress updates (0-1.0 and text)
+        
+        Returns:
+        - List of analysis result dictionaries
+        """
+        results = []
+        failed_analyses = []  # Track failures for reporting
+
+        # Store failed analyses in session state if it doesn't exist
+        import streamlit as st
+        if 'failed_analyses' not in st.session_state:
+            st.session_state.failed_analyses = []
+
+        for i, ticker in enumerate(tickers):
+            # Update progress
+            if progress_callback:
+                progress = i / len(tickers)
+                progress_callback(
+                    progress, f"Analyserar {ticker}... ({i+1}/{len(tickers)})")
+
+            # Analyze this stock
+            analysis = self.analyze_stock(ticker)
+
+            # Add to results
+            results.append(analysis)
+
+            # Check if the result contains an error and add to failed analyses
+            if isinstance(analysis, dict) and "error" in analysis and analysis["error"]:
+                # Ensure error_message exists
+                if "error_message" not in analysis:
+                    analysis["error_message"] = f"Fel vid analys: {analysis['error']}"
+
+                failed_analyses.append(analysis)
+                print(f"Error analyzing {ticker}: {analysis['error']}")
+
+        # Update progress to 100%
+        if progress_callback:
+            progress_callback(1.0, "Analys klar!")
+
+        # Store failed analyses in session state for display
+        st.session_state.failed_analyses = failed_analyses
+
+        return results
+
+    def _derive_signal(self, tech, score, fund):
+        buy = score >= 70 and fund["fundamental_check"]
+        sell = score < 40 or not tech["above_ma40"]
+        return "KÖP" if buy else "SÄLJ" if sell else "HÅLL"
+
+###
     def _calculate_technical_indicators(self, hist):
         """Calculate technical indicators from historical price data"""
         # Make sure we have enough data
@@ -229,7 +227,7 @@ class ValueMomentumStrategy:
         try:
             # Look at the last 12 weeks and identify local minima
             last_weeks = hist.iloc[-13:-
-                                   1] if len(hist) > 13 else hist.iloc[:-1]
+                                1] if len(hist) > 13 else hist.iloc[:-1]
             lows = []
 
             for i in range(1, len(last_weeks)-1):
@@ -251,7 +249,7 @@ class ValueMomentumStrategy:
         try:
             high_52w = hist['High'].max()
             near_52w_high = (current_price > high_52w *
-                             self.near_high_threshold) if pd.notna(high_52w) else False
+                            self.near_high_threshold) if pd.notna(high_52w) else False
         except Exception as e:
             print(f"Error calculating 52 week high: {e}")
             near_52w_high = False
@@ -455,3 +453,5 @@ class ValueMomentumStrategy:
         plt.tight_layout()
 
         return fig
+
+#

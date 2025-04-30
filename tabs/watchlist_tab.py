@@ -303,7 +303,12 @@ def render_watchlist_management(watchlist_manager, strategy):
         # Create an expander to show failed analyses
         with st.expander(f"Aktier som inte kunde analyseras ({num_failed} av {num_total})"):
             for fail in st.session_state.failed_analyses:
-                st.warning(f"**{fail['ticker']}**: {fail['error_message']}")
+                ticker = fail.get('ticker', 'Okänd')
+                error_message = fail.get(
+                    'error_message', f"Fel vid analys: {fail.get('error', 'Okänt fel')}")
+                st.warning(f"**{ticker}**: {error_message}")
+
+
 
             # Show a summary
             if num_success > 0:
@@ -460,8 +465,13 @@ def render_analysis_results(strategy):
                 if st.session_state.failed_analyses:
                     with st.expander("Aktier som inte kunde analyseras"):
                         for fail in st.session_state.failed_analyses:
-                            st.error(
-                                f"**{fail['ticker']}**: {fail.get('error_message', 'Okänt fel')}")
+                            ticker = fail.get('ticker', 'Okänd')
+                            error_message = fail.get(
+                                'error_message', f"Fel vid analys: {fail.get('error', 'Okänt fel')}")
+                            st.warning(f"**{ticker}**: {error_message}")
+
+        
+        
         else:
             # If all results contain errors
             st.warning(
@@ -471,8 +481,10 @@ def render_analysis_results(strategy):
             if st.session_state.failed_analyses:
                 with st.expander("Visa feldetaljer"):
                     for fail in st.session_state.failed_analyses:
-                        st.error(
-                            f"**{fail['ticker']}**: {fail.get('error_message', 'Okänt fel')}")
+                        ticker = fail.get('ticker', 'Okänd')
+                        error_message = fail.get(
+                            'error_message', f"Fel vid analys: {fail.get('error', 'Okänt fel')}")
+                        st.warning(f"**{ticker}**: {error_message}")
 
     else:
         st.info("Klicka på 'Analysera alla' för att se resultat")
