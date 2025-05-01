@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 from helpers import create_results_table, get_index_constituents
+from helpers import preserve_state_on_action
 
 
 def render_watchlist_tab():
@@ -90,7 +91,7 @@ def render_watchlist_management(watchlist_manager, strategy):
 
         # Rename watchlist
         new_name = st.text_input("Nytt namn", value=active_watchlist["name"])
-        if st.button("Byt namn"):
+        if st.button("Byt namn", key="rename_watchlist_button"):
             if watchlist_manager.rename_watchlist(current_index, new_name):
                 st.success(f"Bytte namn till {new_name}")
                 st.rerun()
@@ -164,7 +165,7 @@ def render_watchlist_management(watchlist_manager, strategy):
             import_link = st.text_input(
                 "Klistra in delningslänk eller kod", key="import_link")
 
-            if st.button("Importera från länk"):
+            if st.button("Importera från länk", key="import_link_button"):
                 try:
                     # Clean up the input to handle various formats
                     if "shared_watchlist=" in import_link:
@@ -195,7 +196,7 @@ def render_watchlist_management(watchlist_manager, strategy):
             import_json = st.text_area(
                 "Klistra in JSON data", key="import_json")
 
-            if st.button("Importera från JSON"):
+            if st.button("Importera från JSON", key="import_json_button"):
                 try:
                     if import_json:
                         imported_index = watchlist_manager.import_watchlist(
@@ -234,7 +235,7 @@ def render_watchlist_management(watchlist_manager, strategy):
         [s for s in index_stocks if s not in watchlist]
     )
 
-    if st.button("Lägg till valda"):
+    if st.button("Lägg till valda", key="add_selected_index_stocks"):
         for ticker in selected_index_stocks:
             watchlist_manager.add_stock(ticker)
         st.success(
@@ -248,7 +249,7 @@ def render_watchlist_management(watchlist_manager, strategy):
 
     col1_1, col1_2 = st.columns(2)
     with col1_1:
-        if st.button("Lägg till"):
+        if st.button("Lägg till", key="add_manual_stock_button"):
             if watchlist_manager.add_stock(new_ticker):
                 st.success(f"Lade till {new_ticker}")
                 # Uppdatera watchlist
@@ -263,11 +264,13 @@ def render_watchlist_management(watchlist_manager, strategy):
         with col_a:
             st.write(ticker)
         with col_b:
+            # Ta bort aktie-knapp
             if st.button("Ta bort", key=f"remove_{ticker}"):
-                watchlist_manager.remove_stock(ticker)
-                st.success(f"Tog bort {ticker}")
-                # Uppdatera sidan för att visa ändringen
-                st.rerun()
+                if watchlist_manager.remove_stock(ticker):
+                    st.success(f"Tog bort {ticker}")
+                    st.rerun()
+                else:
+                    st.error("Kunde inte ta bort aktien")
 
     # Knapp för att köra batch-analys på hela watchlist
     if watchlist:
@@ -307,8 +310,6 @@ def render_watchlist_management(watchlist_manager, strategy):
                 error_message = fail.get(
                     'error_message', f"Fel vid analys: {fail.get('error', 'Okänt fel')}")
                 st.warning(f"**{ticker}**: {error_message}")
-
-
 
             # Show a summary
             if num_success > 0:

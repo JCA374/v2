@@ -20,13 +20,21 @@ from tabs.storage_settings_tab import render_storage_settings_tab
 # Import file storage
 from storage.file_storage import FileStorage
 
-
 def create_streamlit_app():
     st.set_page_config(
         page_title="Värde & Momentum Aktiestrategi",
         page_icon="📈",
-        layout="wide"
+        layout="wide",
+        initial_sidebar_state="collapsed"
     )
+
+    hide_streamlit_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        </style>
+        """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
     st.title("Värde & Momentum Aktiestrategi")
 
@@ -82,23 +90,27 @@ def create_streamlit_app():
         "Enskild Aktieanalys": render_analysis_tab,
         "Stock Scanner": render_scanner_tab,
         "Multi-Timeframe Analysis": render_multi_timeframe_tab,
-        # Add the new storage settings tab
         "Storage Settings": render_storage_settings_tab,
     }
+
+    # Get current tab from query params (this is more reliable than session state)
+    current_tab_index = handle_tab_state()
 
     # Create the tabs
     tab_names = list(tabs.keys())
     streamlit_tabs = st.tabs(tab_names)
 
-    # Store the current tab in session state
-    if 'current_tab' not in st.session_state:
-        st.session_state['current_tab'] = tab_names[0]
-
-    # Render each tab's content
+    # Render the tab content
     for i, (name, render_function) in enumerate(tabs.items()):
         with streamlit_tabs[i]:
-            # When this tab is active, update the current tab in session state
+            # When this tab is active, update the URL parameter
+            if i == current_tab_index:
+                st.query_params["tab"] = str(i)
+
+            # Store the current tab in session state (for components that need it)
             st.session_state['current_tab'] = name
+
+            # Render the tab content
             render_function()
 
     # Render sidebar
@@ -110,7 +122,6 @@ def create_streamlit_app():
             st.session_state.watchlists,
             st.session_state.get('active_watchlist_index', 0)
         )
-
 
 def handle_url_params():
     """Handle URL parameters like shared watchlist links"""
@@ -125,7 +136,6 @@ def handle_url_params():
             st.success("Importerad watchlist från delad länk!")
             # Clear the parameter after import to avoid reimporting on refresh
             st.query_params.clear()
-
 
 def render_storage_status():
     """
@@ -249,6 +259,34 @@ def render_sidebar():
             except Exception as e:
                 st.error(f"Error restoring backup: {str(e)}")
 
+def handle_tab_state():
+    """
+    Handles tab state persistence using query parameters instead of session state.
+    This is more reliable with Streamlit's rendering model.
+    """
+    # Check if a tab is specified in the URL query parameters
+    query_params = st.query_params
+    tab_param = query_params.get("tab", ["0"])[0]
+
+    try:
+        tab_index = int(tab_param)
+    except:
+        tab_index = 0
+
+    # Get the tabs defined in the app
+    tab_names = ["Watchlist & Batch Analysis", "Enskild Aktieanalys",
+                 "Stock Scanner", "Multi-Timeframe Analysis",
+                 "Storage Settings"]
+
+    # Make sure the tab index is valid
+    if tab_index < 0 or tab_index >= len(tab_names):
+        tab_index = 0
+
+    # Update the query parameter for the current tab
+    st.query_params["tab"] = str(tab_index)
+
+    # Return the current tab index to use when creating tabs
+    return tab_index
 
 if __name__ == "__main__":
     create_streamlit_app()

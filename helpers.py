@@ -263,3 +263,27 @@ def get_index_constituents(index_name):
     }
 
     return indices.get(index_name, [])
+
+
+def preserve_state_on_action(func):
+    """
+    A decorator to preserve tab state when performing actions 
+    that might trigger a rerun.
+    """
+    def wrapper(*args, **kwargs):
+        # Store current tab index if present in the URL
+        query_params = st.query_params
+        current_tab = query_params.get("tab", ["0"])[0]
+
+        # Call the original function
+        result = func(*args, **kwargs)
+
+        # Set the tab parameter back after function completes
+        # (only if successful to avoid preserving failed states)
+        if result and current_tab:
+            st.query_params["tab"] = current_tab
+
+        return result
+    return wrapper
+
+#
