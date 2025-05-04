@@ -1,119 +1,94 @@
-# Stock Scanner Documentation
+# Stock Scanner User Guide
 
-## Overview
+## Introduction
 
-The Stock Scanner tab provides a powerful screening tool that allows users to filter stocks based on technical indicators from preloaded CSV datasets. It enables discovery of potential investment opportunities matching specific technical criteria without requiring external API connections for stock discovery.
+The Stock Scanner tab allows you to scan multiple stock universes for technical patterns and indicators. It's designed to help you find potential investment opportunities that match specific technical criteria, such as RSI levels, volume surges, and EMA crossovers.
 
 ## Key Features
 
-- **Pre-defined Stock Universes**: Choose between Small Cap, Mid Cap, and Large Cap stocks loaded from CSV files
-- **Technical Filters**: Screen stocks based on RSI levels, volume surges, and EMA crossovers
+- **Multiple Stock Universes**: Choose from Small Cap, Mid Cap, Large Cap, and Swedish Stocks
+- **Technical Filtering**: Find stocks based on RSI range, volume multipliers, and EMA crossovers
+- **Continuous Scanning**: Process stocks in batches to prevent API overloads
+- **Retry Mechanism**: Failed API calls are saved and can be retried later
 - **Watchlist Integration**: Add matching stocks directly to any existing watchlist
-- **Efficient API Usage**: Batch processing with rate limiting to prevent API throttling
-- **User-friendly Interface**: Clear progress indicators and informative error handling
 
-## How To Use
+## How to Use
 
 ### 1. Select Stock Universe
 
-Choose from three pre-defined universes:
-- **Small Cap**: Smaller companies (loaded from `updated_small.csv`)
-- **Mid Cap**: Medium-sized companies (loaded from `updated_mid.csv`) 
-- **Large Cap**: Larger companies (loaded from `updated_large.csv`)
+Choose from one of the available stock universes:
+- **Small Cap**: Smaller companies
+- **Mid Cap**: Medium-sized companies
+- **Large Cap**: Larger companies 
+- **Swedish Stocks**: Stocks from the Swedish market
+- **Failed Tickers**: Previously failed API calls that can be retried
 
-### 2. Configure Technical Filters
+### 2. Configure Scan Parameters
 
-- **Historical Period**: How far back to analyze (3mo, 6mo, 1y)
-- **Data Interval**: Time resolution of price data (daily, weekly)
-- **RSI Range**: Set minimum and maximum RSI values (traditional range is 30-70)
+- **History**: How far back to analyze (3mo, 6mo, 1y)
+- **Interval**: Time resolution of price data (daily, weekly)
+
+### 3. Set Technical Filters
+
+Either select a preset or customize your own filters:
+
+**Presets**:
+- **Conservative**: RSI 40-60, Vol×2.0, 20-day lookback
+- **Balanced**: RSI 30-70, Vol×1.5, 30-day lookback
+- **Aggressive**: RSI 20-80, Vol×1.2, 40-day lookback
+
+**Custom**:
+- **RSI Range**: Min and max RSI values to consider
 - **Volume Multiplier**: Find stocks with volume above average (e.g., 1.5× means 50% above normal)
 - **EMA Crossover Lookback**: Number of days to check for 50/200 EMA crossovers
 
-### 3. Add Custom Tickers (Optional)
+### 4. Add Custom Tickers (Optional)
 
-Enter additional tickers not included in the CSV files, separated by commas.
+Enter additional tickers not included in the selected universe, separated by commas.
 
-### 4. Run Scanner
+### 5. Set Processing Options
 
-Click the "Run Scanner" button to begin analysis. The scanner will:
-1. Load tickers from the selected CSV file
-2. Fetch price data in batches to avoid rate limiting
-3. Calculate technical indicators
-4. Filter stocks based on your criteria
-5. Display matching results in a table
+- **Process Batch Size**: Number of stocks to process at once (smaller batches reduce API errors)
+- **Continuous Scanning**: Enable to process stocks in batches with pauses to avoid API limits
 
-### 5. Add to Watchlist
+### 6. Run the Scanner
 
-From the results table:
-1. Select the stocks you wish to add
-2. Choose a destination watchlist from the dropdown
-3. Click "Add Selected to Watchlist"
+Click one of these buttons:
+- **Run Scanner**: Start scanning with the current settings
+- **Retry Failed**: Retry previously failed tickers
+- **Stop Scanner**: Stop an in-progress scan
+- **Clear Results**: Clear current scan results
 
-## Technical Details
+### 7. Review Results
 
-### Data Processing
+The scanner will display stocks that match your criteria, ranked by a composite score. For each stock, you'll see:
+- **Ticker**: Stock symbol
+- **Price**: Current price
+- **RSI(14)**: Relative Strength Index value
+- **Vol Ratio**: Volume compared to 20-day average
+- **EMA Cross**: Whether a recent EMA crossover occurred
+- **MACD Diff**: MACD histogram value
+- **Score**: Composite technical score (higher is better)
 
-The scanner operates in three main phases:
+### 8. Add to Watchlist
 
-1. **Data Loading**:
-   - Reads ticker symbols and Yahoo Finance formatted tickers from CSV files
-   - Processes custom tickers if provided
-   - Organizes tickers for batch processing
+You can add promising stocks to any of your existing watchlists:
+1. Select which watchlist to add to
+2. Check the boxes next to the stocks you want to add
+3. Click "Add to Watchlist"
 
-2. **API Fetching**:
-   - Fetches data in small batches (25 tickers at a time)
-   - Implements delay between requests to avoid rate limiting
-   - Caches results for one hour to prevent redundant API calls
+## Tips for Effective Scanning
 
-3. **Technical Analysis**:
-   - Calculates key indicators (RSI, EMA crossovers, volume ratios)
-   - Applies filtering criteria to identify matching stocks
-   - Formats and displays results with interactive controls
+1. **Start with smaller universes** or use continuous scanning with smaller batch sizes to avoid API rate limits.
 
-### Screening Criteria
+2. **Use presets first**, then adjust based on your preferences and market conditions.
 
-Stocks must meet all of the following criteria to appear in results:
+3. **Enable "Scan All Stocks"** to process all stocks in the selected universe. For large datasets like the Swedish Stocks (1000+ stocks), the scanner will update the results table after every 100 stocks processed.
 
-- RSI value within the specified min/max range
-- Current volume at least X times the 20-day average volume (where X is the volume multiplier)
-- Optionally, an EMA crossover within the lookback period (bullish signal when 50-day crosses above 200-day)
+4. **Use "Continuous Scanning"** to add delays between batches, which helps prevent Yahoo Finance API rate limits.
 
-## Troubleshooting
+5. **Adjust the "Process Batch Size"** based on your needs:
+   - Larger batches (e.g., 100) process more stocks at once but may encounter API limits
+   - Smaller batches (e.g., 25) are less likely to hit API limits but take longer to complete
 
-### Issue: Scanner Returns No Results
-
-**Potential Causes and Solutions:**
-- **Criteria Too Restrictive**: Try widening the RSI range or lowering the volume multiplier
-- **CSV Files Missing**: Ensure all required CSV files exist in the `/csv` directory
-- **Yahoo Finance Tickers Invalid**: Verify tickers in CSV files have correct formats
-- **API Rate Limiting**: Wait a few minutes and try again with a smaller stock universe
-
-### Issue: API Errors
-
-**Potential Causes and Solutions:**
-- **Network Issues**: Check your internet connection
-- **Yahoo Finance Limitations**: The scanner handles most API errors gracefully, but persistent failures may indicate temporary Yahoo Finance API issues
-- **CSV Format Problems**: Ensure CSV files have "Tickersymbol" and "YahooTicker" columns
-
-### Issue: Slow Performance
-
-**Potential Causes and Solutions:**
-- **Large Stock Universe**: Select a smaller universe (e.g., Small Cap instead of Large Cap)
-- **Long Time Period**: Choose a shorter historical period (e.g., 3mo instead of 1y)
-- **Clear Cache**: Use the "Clear Cache" button in Streamlit to reset the data cache
-
-## Integration with Other Tabs
-
-The Scanner Tab is designed to work seamlessly with other parts of the application:
-- Stocks added to watchlists can be analyzed in the **Watchlist & Batch Analysis** tab
-- Individual stocks can be further analyzed in the **Stock Analysis** tab
-- Technical patterns discovered can be confirmed in the **Multi-Timeframe Analysis** tab
-
-## Future Enhancements
-
-Potential future improvements for the Scanner Tab:
-- Fundamental data integration for combined technical-fundamental screening
-- Custom indicator formulas
-- Saving and loading scanner presets
-- Export of scan results to CSV
-- Automatic scheduled scanning with alerts
+6. **Combine multiple
