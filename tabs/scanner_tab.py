@@ -7,7 +7,9 @@ import time
 from datetime import datetime, timedelta
 import random
 import json
+import csv
 import investpy
+from strategy import ValueMomentumStrategy  # ← new
 
 # Constants
 CACHE_TTL = 7200  # 2 hour cache (increased from 1 hour)
@@ -264,6 +266,9 @@ def render_scanner_tab():
     # Save a reference to the watchlist manager for later
     watchlist_manager = st.session_state.watchlist_manager
     
+    # Instantiate your strategy (so we can use its tech+fund scoring)
+    strategy = ValueMomentumStrategy()
+    
     st.header("Stock Scanner")
     col1, col2 = st.columns([1, 3])
 
@@ -271,20 +276,35 @@ def render_scanner_tab():
     period_map = {"3 months": "3mo", "6 months": "6mo", "1 year": "1y"}
     interval_map = {"Daily": "1d", "Weekly": "1wk"}
 
-    # Initialize session state for scanner settings to avoid tab switching
+    # Initialize session state for scanner settings with all needed fields
     if 'scanner_universe' not in st.session_state:
         st.session_state.scanner_universe = "Mid Cap"
+    if 'universe_selectbox' not in st.session_state:
+        st.session_state.universe_selectbox = st.session_state.scanner_universe
+    if 'prevent_tab_change' not in st.session_state:
+        st.session_state.prevent_tab_change = True
         
     # Define callback to update session state without causing rerun
     def update_universe():
-        st.session_state.scanner_universe = st.session_state.universe_selectbox
-        
+        # Only set scanner_universe if we're not in initial state
+        if not st.session_state.prevent_tab_change:
+            st.session_state.scanner_universe = st.session_state.universe_selectbox
+        else:
+            # After first use, allow normal behavior
+            st.session_state.prevent_tab_change = False
+            
     with col1:
         st.subheader("Scanner Settings")
         universe_options = ["Small Cap", "Mid Cap", "Large Cap", "Swedish Stocks", "Failed Tickers"]
+        
+        # Get current selected universe (defaulting to Mid Cap)
+        current_universe = st.session_state.scanner_universe
+        current_index = universe_options.index(current_universe) if current_universe in universe_options else 1
+        
         # Use key parameter to link to session state
-        universe = st.selectbox("Stock Universe", universe_options, 
-                              index=universe_options.index(st.session_state.scanner_universe),
+        universe = st.selectbox("Stock Universe", 
+                              options=universe_options, 
+                              index=current_index,
                               key="universe_selectbox",
                               on_change=update_universe)
         
@@ -361,7 +381,11 @@ def render_scanner_tab():
         # Handle stop button
         if stop_btn:
             st.session_state.scanner_running = False
-            st.success("Scanner stopped")
+            stop_message = st.empty()
+            stop_message.warning("⚠️ STOPPING SCANNER... Please wait for current batch to complete.")
+            # Force a status update
+            if 'status_message' in st.session_state:
+                st.session_state.status_message = "Scanner stopping - Please wait..."
             
         # Handle loading and processing tickers
         def perform_scan(ticker_list):
@@ -372,126 +396,58 @@ def render_scanner_tab():
             status_text = st.empty()
             results_container = st.empty()
             
-            all_results = []
-            failed_tickers = []
-            completed_retries = []
-            
-            # Split into batches for processing
-            total_tickers = len(ticker_list)
-            batch_count = (total_tickers + batch_process - 1) // batch_process
-            
             try:
-                for batch_idx in range(batch_count):
-                    # Check if scanner was stopped
-                    if not st.session_state.scanner_running:
-                        status_text.warning("Scanner stopped by user")
-                        break
-                        
-                    # Get the current batch
-                    start_idx = batch_idx * batch_process
-                    end_idx = min(start_idx + batch_process, total_tickers)
-                    current_batch = ticker_list[start_idx:end_idx]
-                    
-                    # Update progress
-                    progress = (batch_idx * batch_process) / total_tickers
-                    progress_bar.progress(progress)
-                    status_text.text(f"Processing batch {batch_idx+1}/{batch_count} ({start_idx+1}-{end_idx} of {total_tickers})")
-                    
-                    # Fetch data for the batch
-                    batch_data = fetch_bulk_data(current_batch, period, interval)
-                    
-                    # Process each ticker
-                    batch_results = []
-                    for ticker_info in current_batch:
-                        try:
-                            orig = ticker_info[0] if isinstance(ticker_info, (list, tuple)) else ticker_info
-                            df = batch_data.get(orig)
-                            
-                            if df is None or len(df) < 21:
-                                failed_tickers.append(orig)
-                                continue
-                                
-                            # Calculate indicators
-                            ind = calculate_indicators(df)
-                            if ind is None:
-                                failed_tickers.append(orig)
-                                continue
-                                
-                            # Extract the latest data point
-                            latest = ind.iloc[-1]
-                            
-                            # Calculate scores
-                            ema_cross = int(latest['EMA_Cross'])
-                            rsi_val = latest['RSI']
-                            center = (rsi_min + rsi_max) / 2
-                            rsi_score = max(0, 1 - abs(rsi_val - center) / max((rsi_max - rsi_min) / 2, 1))
-                            vol_ratio = latest['VolRatio'] if 'VolRatio' in latest else (latest['Volume'] / latest['VolAvg20'] if 'VolAvg20' in latest and latest['VolAvg20'] > 0 else 0)
-                            vol_score = min(vol_ratio / vol_mul, 1)
-                            macd_diff = latest['MACD'] - latest['MACD_Signal'] if 'MACD' in latest and 'MACD_Signal' in latest else 0
-                            macd = int(macd_diff > 0)
-                            score = round(ema_cross * 0.4 + rsi_score * 0.3 + vol_score * 0.2 + macd * 0.1, 2)
-                            
-                            # Add to results
-                            result = {
-                                'Ticker': orig, 
-                                'Price': round(latest['Close'], 2), 
-                                'RSI(14)': round(rsi_val, 2), 
-                                'Vol Ratio': round(vol_ratio, 2), 
-                                'EMA Cross': 'Yes' if ema_cross else 'No', 
-                                'MACD Diff': round(macd_diff, 2),
-                                'Score': score
-                            }
-                            batch_results.append(result)
-                            
-                            # If this was a retry, mark it as completed
-                            if universe == "Failed Tickers":
-                                completed_retries.append(orig)
-                            
-                        except Exception as e:
-                            st.warning(f"Error processing {orig}: {e}")
-                            failed_tickers.append(orig)
-                    
-                    # Add batch results to overall results
-                    all_results.extend(batch_results)
-                    
-                    # Update the displayed results after each UPDATE_INTERVAL stocks
-                    processed_count = (batch_idx + 1) * batch_process
-                    if all_results and (processed_count % UPDATE_INTERVAL <= batch_process) or batch_idx == batch_count - 1:
-                        df_results = pd.DataFrame(all_results).sort_values('Score', ascending=False)
-                        with results_container.container():
-                            st.dataframe(df_results)
-                            st.text(f"Processed {min(processed_count, total_tickers)} of {total_tickers} stocks. Found {len(all_results)} matches.")
-                    
-                    # Wait between batches if continuous scanning
-                    if continuous_scan and batch_idx < batch_count - 1:
-                        wait_time = 5  # Increased wait time to 5 seconds to avoid API limits
-                        for i in range(wait_time, 0, -1):
-                            status_text.text(f"Waiting {i}s before next batch...")
-                            time.sleep(1)
+                # Instead of manual scoring, hand the entire ticker list off to your strategy
+                symbols = [t[0] if isinstance(t, (list, tuple)) else t for t in ticker_list]
                 
-                # Final progress update
-                if st.session_state.scanner_running:
-                    progress_bar.progress(1.0)
-                    status_text.text(f"Completed scanning {total_tickers} tickers. Found {len(all_results)} matches.")
+                # Display initial status
+                status_text.text(f"Starting analysis of {len(symbols)} stocks...")
                 
-                # Save results to session state
+                # Use the ValueMomentumStrategy to analyze all tickers
+                analyses = strategy.batch_analyze(symbols,
+                    progress_callback=lambda p, msg: (progress_bar.progress(p), status_text.text(msg)))
+                
+                # Build DataFrame from the returned analyses
+                all_results = []
+                failed = []
+                
+                for a in analyses:
+                    if a.get("error"):
+                        failed.append(a["ticker"])
+                        continue
+                    all_results.append({
+                        "Ticker":     a["ticker"],
+                        "Price":      a["price"],
+                        "Tech Score": a["tech_score"],
+                        "Fund OK":    "Yes" if a["fundamental_check"] else "No",
+                        "Signal":     a["signal"]
+                    })
+                
+                # Sort by the strategy's Tech Score
                 if all_results:
-                    results_df = pd.DataFrame(all_results).sort_values('Score', ascending=False)
-                    st.session_state.scan_results = results_df
+                    df_results = pd.DataFrame(all_results).sort_values("Tech Score", ascending=False)
+                    st.session_state.scan_results = df_results
                 
-                # Save failed tickers for retry
-                if failed_tickers:
-                    st.session_state.failed_tickers = failed_tickers
-                    save_failed_tickers(failed_tickers)
-                    status_text.warning(f"{len(failed_tickers)} tickers failed and saved for retry")
+                # Track failed tickers for retry
+                if failed:
+                    st.session_state.failed_tickers = failed
+                    save_failed_tickers(failed)
                 
-                # Update retry file by removing successful retries
-                if completed_retries:
-                    clear_completed_retries(completed_retries)
+                # Final status update without displaying the table (the outer code will handle that)
+                status_text.text(f"Completed. {len(all_results)} results, {len(failed)} failed.")
+                
+                # Record successful retries if we were retrying failed tickers
+                if universe == "Failed Tickers" and all_results:
+                    completed_retries = [a["ticker"] for a in analyses if not a.get("error")]
+                    if completed_retries:
+                        clear_completed_retries(completed_retries)
                 
             except Exception as e:
                 st.error(f"Error during scanning: {e}")
+                import traceback
+                st.error(traceback.format_exc())
             finally:
+                # Always set scanner to finished state
                 st.session_state.scanner_running = False
         
         # Handle button clicks for scanning
@@ -505,58 +461,81 @@ def render_scanner_tab():
                 else:
                     tickers = [[t, t] for t in tickers]
             elif universe == "Swedish Stocks":
-                # First try fetching Swedish stocks using investpy API
+                # Directly use valid_swedish_company_data.csv without trying investpy
                 tickers = []
-                try:
-                    with st.spinner("Fetching Swedish stocks from investpy API..."):
-                        stocks_df = investpy.get_stocks(country="Sweden")
-                        stocks_df['YahooTicker'] = stocks_df['symbol'].str.upper() + '.ST'
-                        tickers = [[t, t] for t in stocks_df['YahooTicker'].tolist()]
+                
+                # Define paths to look for the CSV file
+                possible_paths = [
+                    f"/mnt/c/Users/JonasCarlsson/OneDrive - Lemontree Enterprise Solutions AB/AI/AI Aktier/Teknisk analys Jockes/v2/csv/{SWEDEN_BACKUP_CSV}",
+                    SWEDEN_BACKUP_CSV,
+                    f"csv/{SWEDEN_BACKUP_CSV}",
+                    f"../csv/{SWEDEN_BACKUP_CSV}",
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "csv", SWEDEN_BACKUP_CSV)
+                ]
+                
+                # Try each path until we find the file
+                for path in possible_paths:
+                    exists = os.path.exists(path)
+                    st.write(f"▶️ Checking path: {path} - Exists: {exists}")
                     
-                    st.success(f"Successfully fetched {len(tickers)} Swedish stocks from investpy API")
-                except Exception as e:
-                    st.warning(f"Error fetching Swedish stocks from investpy API: {e}")
-                    st.info("Falling back to valid_swedish_company_data.csv file...")
-                    
-                    # Fallback to valid_swedish_company_data.csv
-                    st.write(f"▶️ Looking for backup file: {SWEDEN_BACKUP_CSV}")
-                    # Try all possible paths for the backup file
-                    possible_paths = [
-                        SWEDEN_BACKUP_CSV,
-                        f"csv/{SWEDEN_BACKUP_CSV}",
-                        f"../csv/{SWEDEN_BACKUP_CSV}",
-                        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "csv", SWEDEN_BACKUP_CSV),
-                        # Add absolute path for WSL environments
-                        f"/mnt/c/Users/JonasCarlsson/OneDrive - Lemontree Enterprise Solutions AB/AI/AI Aktier/Teknisk analys Jockes/v2/csv/{SWEDEN_BACKUP_CSV}"
-                    ]
-                    
-                    for path in possible_paths:
-                        exists = os.path.exists(path)
-                        st.write(f"▶️ Checking path: {path} - Exists: {exists}")
-                        if exists:
+                    if exists:
+                        try:
+                            # Try to load with UTF-8 encoding first, then fallback to latin-1
+                            # Try a direct approach with the csv module to handle quotes properly
+                            ticker_list = []
+                            
+                            # First try with pandas for convenience
                             try:
-                                # Try multiple encodings to ensure the file loads correctly
-                                try:
-                                    df = pd.read_csv(path, encoding='utf-8')
-                                except:
-                                    try:
-                                        df = pd.read_csv(path, encoding='latin-1')
-                                    except:
-                                        df = pd.read_csv(path, encoding='utf-8', on_bad_lines='skip')
+                                df = pd.read_csv(path, encoding='utf-8')
+                                has_yahoo_ticker = 'YahooTicker' in df.columns
                                 
-                                st.write(f"▶️ Backup CSV columns: {list(df.columns)}")
-                                st.write(f"▶️ Backup CSV rows: {len(df)}")
+                                if not has_yahoo_ticker:
+                                    # Try a more manual approach with the csv module
+                                    with open(path, 'r', encoding='utf-8', errors='replace') as f:
+                                        reader = csv.reader(f)
+                                        headers = next(reader)
+                                        yahoo_idx = headers.index('YahooTicker') if 'YahooTicker' in headers else 0
+                                        
+                                        for row in reader:
+                                            if row and len(row) > yahoo_idx:
+                                                ticker = row[yahoo_idx].strip()
+                                                if ticker and not ticker.startswith('#'):
+                                                    if ',' in ticker:
+                                                        ticker = ticker.split(',')[0]
+                                                    ticker_list.append(ticker)
+                                    
+                                    # Create a DataFrame if csv approach worked
+                                    if ticker_list:
+                                        df = pd.DataFrame({'YahooTicker': ticker_list})
+                            
+                            except UnicodeDecodeError:
+                                # Try with latin-1 encoding
+                                df = pd.read_csv(path, encoding='latin-1')
+                            
+                            st.write(f"▶️ CSV columns: {list(df.columns)}")
+                            st.write(f"▶️ CSV row count: {len(df)}")
+                            
+                            # Process tickers - handling quoted entries with commas
+                            if 'YahooTicker' in df.columns:
+                                # Clean and process tickers
+                                processed_tickers = []
+                                for t in df['YahooTicker']:
+                                    if pd.isna(t) or str(t).strip() == '':
+                                        continue
+                                        
+                                    ticker = str(t)
+                                    # Handle quoted entries with commas
+                                    if '"' in ticker:
+                                        # Extract the first part before comma
+                                        ticker = ticker.replace('"', '').split(',')[0]
+                                    
+                                    processed_tickers.append(ticker)
                                 
-                                # Determine which columns to use for tickers
-                                if 'YahooTicker' in df.columns:
-                                    tickers = [[t, t] for t in df['YahooTicker'].tolist() if pd.notna(t) and str(t).strip() != '']
-                                elif 'Tickersymbol' in df.columns:
-                                    tickers = [[t, t] for t in df['Tickersymbol'].tolist() if pd.notna(t) and str(t).strip() != '']
-                                
-                                st.success(f"Successfully loaded {len(tickers)} Swedish stocks from backup file")
+                                tickers = [[t, t] for t in processed_tickers]
+                                st.success(f"Successfully loaded {len(tickers)} Swedish stocks")
                                 break
-                            except Exception as e_csv:
-                                st.error(f"Error loading backup file {path}: {e_csv}")
+                        except Exception as e:
+                            st.error(f"Error loading CSV from {path}: {e}")
                 
                 # Display ticker information
                 if tickers:
@@ -565,7 +544,7 @@ def render_scanner_tab():
                     if len(tickers) > 10:
                         st.write("▶️ Last 5 tickers:", tickers[-5:])
                 else:
-                    st.error("Failed to fetch Swedish stocks from both API and backup file.")
+                    st.error("Failed to load Swedish stocks from valid_swedish_company_data.csv")
             else:
                 tickers = load_csv_tickers(csv_file)
                 st.write("▶️ CSV file path:", csv_file, "| Exists?", os.path.exists(csv_file))
@@ -608,20 +587,82 @@ def render_scanner_tab():
         df_res = st.session_state.scan_results
         if df_res is not None and not df_res.empty:
             st.subheader("Results")
-            top_n = st.slider("Display Top N", 1, len(df_res), min(20, len(df_res)))
+            
+            # Initialize session state for top_n slider
+            if 'scan_top_n' not in st.session_state:
+                st.session_state.scan_top_n = min(20, len(df_res))
+            
+            # Callback to update top_n without forcing reload
+            def update_top_n():
+                st.session_state.scan_top_n = st.session_state.top_n_slider
+            
+            # Use key and on_change to handle slider changes
+            top_n = st.slider("Display Top N", 
+                            1, len(df_res), 
+                            st.session_state.scan_top_n,
+                            key="top_n_slider",
+                            on_change=update_top_n)
+            
             df_disp = df_res.head(top_n)
+            
+            # Setup session state for watchlist interaction
+            if 'watchlist_selected' not in st.session_state:
+                st.session_state.watchlist_selected = 0
+            if 'watchlist_picks' not in st.session_state:
+                st.session_state.watchlist_picks = []
+                
+            # Callback functions to update state without page reload
+            def update_selected_watchlist():
+                st.session_state.watchlist_selected = st.session_state.selected_wl_index
+                
+            def update_picked_stocks():
+                st.session_state.watchlist_picks = st.session_state.picked_stocks
+                
+            def add_to_watchlist():
+                # Use values stored in session state
+                wl_index = st.session_state.watchlist_selected
+                stock_picks = st.session_state.watchlist_picks
+                
+                if stock_picks and 'watchlist_manager' in st.session_state:
+                    wlists = watchlist_manager.get_all_watchlists()
+                    names = [w['name'] for w in wlists]
+                    
+                    success_message = st.empty()
+                    for t in stock_picks:
+                        watchlist_manager.add_stock_to_watchlist(wl_index, t)
+                    
+                    # Show success message without reloading page
+                    if len(stock_picks) == 1:
+                        success_message.success(f"Added {stock_picks[0]} to {names[wl_index]}")
+                    else:
+                        success_message.success(f"Added {len(stock_picks)} stocks to {names[wl_index]}")
+                    
+                    # Clear picks from session state
+                    st.session_state.watchlist_picks = []
+                    # This will reset the multiselect without reloading
+                    st.session_state.picked_stocks = []
             
             # Allow adding to watchlist
             if 'watchlist_manager' in st.session_state:
                 wlists = watchlist_manager.get_all_watchlists()
                 names = [w['name'] for w in wlists]
-                sel = st.selectbox("Watchlist", range(len(names)),
-                                format_func=lambda i: names[i])
-                picks = st.multiselect("Select to add:", df_disp['Ticker'].tolist())
-                if st.button("Add to Watchlist") and picks:
-                    for t in picks:
-                        watchlist_manager.add_stock_to_watchlist(sel, t)
-                        st.success(f"Added {t} to {names[sel]}")
+                
+                # Use keys to link to session state
+                sel = st.selectbox("Watchlist", 
+                                 range(len(names)),
+                                 format_func=lambda i: names[i],
+                                 key="selected_wl_index",
+                                 on_change=update_selected_watchlist)
+                
+                picks = st.multiselect("Select to add:", 
+                                     df_disp['Ticker'].tolist(),
+                                     key="picked_stocks",
+                                     on_change=update_picked_stocks)
+                
+                # Use a callback to avoid page reload
+                add_btn = st.button("Add to Watchlist", 
+                                   on_click=add_to_watchlist,
+                                   disabled=(len(picks) == 0))
             
             # Display the dataframe
             st.dataframe(df_disp, use_container_width=True)

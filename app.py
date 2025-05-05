@@ -261,29 +261,59 @@ def render_sidebar():
 
 def handle_tab_state():
     """
-    Handles tab state persistence using query parameters instead of session state.
+    Handles tab state persistence using query parameters and session state for backup.
     This is more reliable with Streamlit's rendering model.
     """
-    # Check if a tab is specified in the URL query parameters
-    query_params = st.query_params
-    tab_param = query_params.get("tab", ["0"])[0]
-
-    try:
-        tab_index = int(tab_param)
-    except:
-        tab_index = 0
-
     # Get the tabs defined in the app
     tab_names = ["Watchlist & Batch Analysis", "Enskild Aktieanalys",
                  "Stock Scanner", "Multi-Timeframe Analysis",
                  "Storage Settings"]
+    
+    # Define tab index for Stock Scanner
+    SCANNER_TAB_INDEX = 2
+    
+    # Initialize session state for tab tracking if not exists
+    if 'current_tab_index' not in st.session_state:
+        st.session_state.current_tab_index = 0
+    
+    # Add a flag to protect against tab switching during initial widget interaction
+    if 'widget_interaction_started' not in st.session_state:
+        st.session_state.widget_interaction_started = False
+    
+    # Check if a tab is specified in the URL query parameters
+    query_params = st.query_params
+    tab_param = query_params.get("tab", [None])[0]
+    
+    # Special handling to prevent unintended tab switches
+    if 'prevent_tab_change' in st.session_state and st.session_state.prevent_tab_change:
+        # If we're in the scanner tab and this is our first widget interaction,
+        # force us to stay in the scanner tab
+        if st.session_state.current_tab_index == SCANNER_TAB_INDEX:
+            tab_index = SCANNER_TAB_INDEX
+            st.session_state.widget_interaction_started = True
+            return tab_index
+    
+    # Normal processing for tab state
+    if tab_param is not None:
+        try:
+            tab_index = int(tab_param)
+        except:
+            # Use session state as fallback if query param is invalid
+            tab_index = st.session_state.current_tab_index
+    else:
+        # Use session state if no query param
+        tab_index = st.session_state.current_tab_index
 
     # Make sure the tab index is valid
     if tab_index < 0 or tab_index >= len(tab_names):
         tab_index = 0
+    
+    # Store current tab index in session state for persistence
+    st.session_state.current_tab_index = tab_index
 
-    # Update the query parameter for the current tab
-    st.query_params["tab"] = str(tab_index)
+    # Update the query parameter for the current tab only if it has changed
+    if str(tab_index) != tab_param:
+        st.query_params["tab"] = str(tab_index)
 
     # Return the current tab index to use when creating tabs
     return tab_index
