@@ -12,11 +12,10 @@ from strategy import ValueMomentumStrategy  # ← new
 
 # Try to import investpy, but don't fail if it's not available
 try:
-    import investpy
+    import investpy  # type: ignore
     INVESTPY_AVAILABLE = True
 except ImportError:
     INVESTPY_AVAILABLE = False
-    st.warning("investpy module not available. Swedish stocks will be loaded from CSV only.")
 
 # Constants
 CACHE_TTL = 7200  # 2 hour cache (increased from 1 hour)
@@ -261,6 +260,10 @@ def render_scanner_tab():
     """
     Renders stock scanner tab. Preserves results in session_state to avoid data loss on widget changes.
     """
+    if not INVESTPY_AVAILABLE:
+        st.warning("investpy module not available. Swedish stocks will be loaded from CSV only.")
+        
+
     if 'scan_results' not in st.session_state:
         st.session_state.scan_results = None
     
