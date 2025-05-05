@@ -8,8 +8,15 @@ from datetime import datetime, timedelta
 import random
 import json
 import csv
-import investpy
 from strategy import ValueMomentumStrategy  # ← new
+
+# Try to import investpy, but don't fail if it's not available
+try:
+    import investpy
+    INVESTPY_AVAILABLE = True
+except ImportError:
+    INVESTPY_AVAILABLE = False
+    st.warning("investpy module not available. Swedish stocks will be loaded from CSV only.")
 
 # Constants
 CACHE_TTL = 7200  # 2 hour cache (increased from 1 hour)
@@ -464,9 +471,25 @@ def render_scanner_tab():
                 # Directly use valid_swedish_company_data.csv without trying investpy
                 tickers = []
                 
+                # Try using investpy if available (but most deployments won't have it)
+                if INVESTPY_AVAILABLE:
+                    try:
+                        with st.spinner("Fetching Swedish stocks from investpy API..."):
+                            stocks_df = investpy.get_stocks(country="Sweden")
+                            stocks_df['YahooTicker'] = stocks_df['symbol'].str.upper() + '.ST'
+                            tickers = [[t, t] for t in stocks_df['YahooTicker'].tolist()]
+                            st.success(f"Successfully fetched {len(tickers)} Swedish stocks from investpy API")
+                            # If we got tickers, no need to load from CSV
+                            if tickers:
+                                return tickers
+                    except Exception as e:
+                        st.warning(f"Could not use investpy: {e}. Falling back to CSV file.")
+                
                 # Define paths to look for the CSV file
                 possible_paths = [
-                    f"/mnt/c/Users/JonasCarlsson/OneDrive - Lemontree Enterprise Solutions AB/AI/AI Aktier/Teknisk analys Jockes/v2/csv/{SWEDEN_BACKUP_CSV}",
+                    f"csv/{SWEDEN_BACKUP_CSV}",  # Relative path for deployment
+                    SWEDEN_BACKUP_CSV,           # Direct path
+                    f"../csv/{SWEDEN_BACKUP_CSV}",
                     SWEDEN_BACKUP_CSV,
                     f"csv/{SWEDEN_BACKUP_CSV}",
                     f"../csv/{SWEDEN_BACKUP_CSV}",
