@@ -224,8 +224,10 @@ def load_ticker_list(universe="Mid Cap", custom_tickers="", scan_all=True):
         "Small Cap": "updated_small.csv",
         "Mid Cap": "updated_mid.csv",
         "Large Cap": "updated_large.csv",
-        "Swedish Stocks": None,  # Handled differently
-        "Failed Tickers": None   # Special case, loaded differently
+        # Direct CSV path for Swedish stocks
+        "Swedish Stocks": "valid_swedish_company_data.csv",
+        # Automatically use the right CSV name if it exists in the current directory
+        "Sweden Company Data": "sweden_company_data.csv"
     }.get(universe)
 
     # Get tickers based on selected universe
@@ -236,41 +238,14 @@ def load_ticker_list(universe="Mid Cap", custom_tickers="", scan_all=True):
             return []
         else:
             tickers = [[t, t] for t in tickers]
-    elif universe == "Swedish Stocks":
-        # Try investpy if available
-        try:
-            import investpy
-            INVESTPY_AVAILABLE = True
-        except ImportError:
-            INVESTPY_AVAILABLE = False
-
-        tickers = []
-
-        # Try using investpy if available
-        if INVESTPY_AVAILABLE:
-            try:
-                with st.spinner("Fetching Swedish stocks from investpy API..."):
-                    stocks_df = investpy.get_stocks(country="Sweden")
-                    stocks_df['YahooTicker'] = stocks_df['symbol'].str.upper() + \
-                        '.ST'
-                    tickers = [[t, t]
-                               for t in stocks_df['YahooTicker'].tolist()]
-                    # If we got tickers, no need to load from CSV
-                    if tickers:
-                        st.success(
-                            f"Successfully fetched {len(tickers)} Swedish stocks from investpy API")
-            except Exception:
-                st.warning("Could not use investpy. Falling back to CSV file.")
-
-        # If no tickers yet, try loading from CSV
+    elif universe in ["Swedish Stocks", "Sweden Company Data"]:
+        # Load directly from CSV instead of using investpy
+        csv_file_to_use = SWEDEN_BACKUP_CSV if universe == "Swedish Stocks" else "sweden_company_data.csv"
+        tickers = load_csv_tickers(csv_file_to_use)
+        
         if not tickers:
-            # Try to load Swedish stock data from CSV
-            tickers = load_csv_tickers(SWEDEN_BACKUP_CSV)
-
-            if not tickers:
-                st.error(
-                    "Failed to load Swedish stocks from both API and backup CSV")
-                return []
+            st.error(f"Failed to load {universe} from CSV file")
+            return []
     else:
         # Load from specified CSV file
         tickers = load_csv_tickers(csv_file)
@@ -290,7 +265,6 @@ def load_ticker_list(universe="Mid Cap", custom_tickers="", scan_all=True):
         tickers.extend(custom_tickers)
 
     return tickers
-
 
 def clear_completed_retries(completed_tickers):
     """Remove successfully completed tickers from the retry file."""

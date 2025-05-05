@@ -1,9 +1,9 @@
 # tabs/scanner_tab.py
 import streamlit as st
 from .scanner.ui import build_settings_ui, display_results
-from .scanner.data import load_ticker_list
+from .scanner.data import load_ticker_list, load_retry_tickers
 from .scanner.state import reset_scanner_state, initialize_scanner_state
-from .scanner.analysis import perform_scan
+from .scanner.analysis import perform_scan  # Import directly from analysis
 
 
 def render_scanner_tab():
@@ -54,7 +54,6 @@ def render_scanner_tab():
 
         # Handle retry button
         if settings["retry_btn"]:
-            from .scanner.data import load_retry_tickers
             retry_tickers = load_retry_tickers()
             if retry_tickers:
                 retry_tickers = [[t, t] for t in retry_tickers]
@@ -71,5 +70,6 @@ def render_scanner_tab():
             else:
                 st.info("No failed tickers to retry")
 
-        # Display results
+        # Display results EXACTLY ONCE - at the end of the function
+        # Make sure there's no other call to display_results elsewhere
         display_results(watchlist_manager=st.session_state.watchlist_manager)

@@ -1,5 +1,6 @@
 # tabs/scanner/ui.py
 import streamlit as st
+import pandas as pd
 
 
 def build_settings_ui():
@@ -16,7 +17,7 @@ def build_settings_ui():
 
     # Map the selection to CSV files
     universe_options = ["Small Cap", "Mid Cap",
-                        "Large Cap", "Swedish Stocks", "Failed Tickers"]
+                        "Large Cap", "Swedish Stocks", "Sweden Company Data", "Failed Tickers"]
 
     # Define callback to update session state without causing rerun
     def update_universe():
@@ -212,8 +213,54 @@ def display_results(watchlist_manager=None):
                             on_click=add_to_watchlist,
                             disabled=(len(picks) == 0))
 
-    # Display the dataframe
-    st.dataframe(df_disp, use_container_width=True)
+    # Format results before display
+    # Add styling to dataframe
+    def highlight_signals(val):
+        if val == "KÖP" or val == "BUY":
+            return "background-color: #d4edda; color: #155724;"
+        elif val == "SÄLJ" or val == "SELL":
+            return "background-color: #f8d7da; color: #721c24;"
+        return ""
+    
+    # Style fund check column
+    def highlight_fund_ok(val):
+        if val == "Yes":
+            return "background-color: #d4edda;"
+        elif val == "No":
+            return "background-color: #f8d7da;"
+            return ""
+    
+    # Format numeric columns - handling both "Tech Score" or "Score" column names
+    score_col = None
+    if "Tech Score" in df_disp.columns:
+        score_col = "Tech Score"
+    elif "Score" in df_disp.columns:
+        score_col = "Score"
+    
+    # Create a copy to avoid modifying the original
+    df_display = df_disp.copy()
+    
+    # Format the score column if it exists
+    if score_col:
+        try:
+            df_display[score_col] = df_display[score_col].apply(
+                lambda x: f"{int(x)}" if isinstance(x, (int, float)) and pd.notna(x) else "N/A")
+        except Exception as e:
+            st.warning(f"Could not format score column: {e}")
+    
+    # Set up styler with formatting
+    styled_df = df_display.style
+    
+    # Apply signal highlighting if column exists
+    if "Signal" in df_display.columns:
+        styled_df = styled_df.applymap(highlight_signals, subset=["Signal"])
+        
+    # Apply fund check highlighting if column exists
+    if "Fund OK" in df_display.columns:
+        styled_df = styled_df.applymap(highlight_fund_ok, subset=["Fund OK"])
+    
+    # Display styled dataframe
+    st.dataframe(styled_df, use_container_width=True)
 
     # Display failed tickers if any
     if hasattr(st.session_state, 'failed_tickers') and st.session_state.failed_tickers:
