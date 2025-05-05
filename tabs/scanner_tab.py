@@ -271,10 +271,22 @@ def render_scanner_tab():
     period_map = {"3 months": "3mo", "6 months": "6mo", "1 year": "1y"}
     interval_map = {"Daily": "1d", "Weekly": "1wk"}
 
+    # Initialize session state for scanner settings to avoid tab switching
+    if 'scanner_universe' not in st.session_state:
+        st.session_state.scanner_universe = "Mid Cap"
+        
+    # Define callback to update session state without causing rerun
+    def update_universe():
+        st.session_state.scanner_universe = st.session_state.universe_selectbox
+        
     with col1:
         st.subheader("Scanner Settings")
         universe_options = ["Small Cap", "Mid Cap", "Large Cap", "Swedish Stocks", "Failed Tickers"]
-        universe = st.selectbox("Stock Universe", universe_options, index=1)
+        # Use key parameter to link to session state
+        universe = st.selectbox("Stock Universe", universe_options, 
+                              index=universe_options.index(st.session_state.scanner_universe),
+                              key="universe_selectbox",
+                              on_change=update_universe)
         
         # Map the selection to CSV files
         csv_file = {
@@ -337,14 +349,14 @@ def render_scanner_tab():
 
     # Set up the main result area
     with col2:
-        # Handle clear button
+        # Handle clear button - avoid using st.experimental_rerun() to prevent tab switching
         if clear_btn:
-            # Clear the state without forcing a rerun to avoid tab switching
+            # Clear the state without forcing a rerun
             st.session_state.scan_results = None
             st.session_state.failed_tickers = []
             st.session_state.scanner_running = False
-            # Use a success message instead of rerunning
-            st.success("Results cleared successfully")
+            # Show success message instead of rerunning
+            st.success("Results cleared successfully!")
             
         # Handle stop button
         if stop_btn:
