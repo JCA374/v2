@@ -7,6 +7,7 @@ from helpers import create_results_table, get_index_constituents
 from datetime import datetime
 import json
 import os
+import shutil  # Added to fix the disk_usage error
 import uuid  # Added for generating unique IDs
 
 # Import tabs
