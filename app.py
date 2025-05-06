@@ -73,7 +73,6 @@ def create_streamlit_app():
         st.session_state.watchlist_manager = MultiWatchlistManager()
         # Enable debug mode initially to diagnose issues
         st.session_state.watchlist_manager.debug_mode = True
-        st.session_state.watchlist_manager.cookie_manager.debug_mode = True
 
     if 'analysis_results' not in st.session_state:
         st.session_state.analysis_results = []

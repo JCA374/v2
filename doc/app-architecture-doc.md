@@ -35,7 +35,6 @@ value_momentum_app/
 │
 ├── storage/             # Persistence layer
 │   ├── __init__.py
-│   ├── cookie_manager.py     # Browser storage functionality
 │   └── watchlist_manager.py  # Watchlist management
 │
 └── tabs/                # UI tabs - each tab in its own file

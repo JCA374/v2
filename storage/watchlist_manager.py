@@ -9,31 +9,31 @@ import json
 from datetime import datetime
 import streamlit as st
 
-# Import the cookie manager for backwards compatibility
-from .cookie_manager import CookieManager
+# storage/watchlist_manager.py - Updated version
+"""
+Watchlist manager for storing and managing stock watchlists.
+This file provides the MultiWatchlistManager class which uses database storage.
+"""
 
 
 class MultiWatchlistManager:
     """
-    Manages multiple watchlists for a user, stored in cookies/session state.
+    Manages multiple watchlists for a user, stored in a database.
     Provides functionality for creating, renaming, deleting, and sharing watchlists.
     """
 
     def __init__(self):
-        """Initialize the watchlist manager with cookie storage"""
-        # Create cookie manager for backwards compatibility
-        self.cookie_manager = CookieManager(cookie_name="watchlists_data")
-        self.debug_mode = False  # For debugging
-        self.storage_status = None  # Track storage status
-
+        """Initialize the watchlist manager with database storage"""
         # Check if we have database storage available
         self.db_storage = st.session_state.get('db_storage', None)
+        self.debug_mode = False  # For debugging
+        self.storage_status = None  # Track storage status
 
         # Initialize watchlists in session state if not present
         if 'watchlists' not in st.session_state:
             watchlists_loaded = False
 
-            # Try to load from database first if available
+            # Try to load from database
             if self.db_storage:
                 db_data = self.db_storage.load_watchlists()
                 if db_data and "watchlists" in db_data:
@@ -46,34 +46,19 @@ class MultiWatchlistManager:
                         st.write(
                             f"Loaded {len(st.session_state.watchlists)} watchlists from database")
 
-            # Fall back to cookies if database didn't work
+            # Create default structure if nothing was loaded
             if not watchlists_loaded:
-                # Try to load from cookies
-                cookie_data = self.cookie_manager.load_cookie()
+                # Create default structure with one empty watchlist
+                st.session_state.watchlists = [{
+                    "id": str(uuid.uuid4()),
+                    "name": "Min Watchlist",
+                    "stocks": []
+                }]
+                st.session_state.active_watchlist_index = 0
+                self.storage_status = "initialized"
 
-                if cookie_data and "watchlists" in cookie_data:
-                    st.session_state.watchlists = cookie_data["watchlists"]
-                    st.session_state.active_watchlist_index = cookie_data.get(
-                        "active_index", 0)
-                    self.storage_status = "loaded from cookies"
-                    if self.debug_mode:
-                        st.write(
-                            f"Loaded {len(st.session_state.watchlists)} watchlists from cookies")
-                else:
-                    # Create default structure with one empty watchlist
-                    st.session_state.watchlists = [{
-                        "id": str(uuid.uuid4()),
-                        "name": "Min Watchlist",
-                        "stocks": []
-                    }]
-                    st.session_state.active_watchlist_index = 0
-                    self.storage_status = "initialized"
-
-                    # For compatibility with old version, check if watchlist.json exists
-                    self._import_legacy_watchlist()
-
-                    # Save the initial state to storage
-                    self._save_to_storage()
+                # Save the initial state to storage
+                self._save_to_storage()
 
         # Make sure active index is valid
         if not isinstance(st.session_state.get('watchlists', []), list) or len(st.session_state.get('watchlists', [])) == 0:
@@ -89,7 +74,7 @@ class MultiWatchlistManager:
             st.session_state.active_watchlist_index = 0
 
     def _save_to_storage(self):
-        """Save watchlists to storage (database if available, cookies as fallback)"""
+        """Save watchlists to database storage"""
         # Ensure we have valid watchlist data before saving
         if not isinstance(st.session_state.get('watchlists', []), list):
             st.session_state.watchlists = [{
@@ -101,7 +86,7 @@ class MultiWatchlistManager:
 
         success = False
 
-        # Try to save to database first if available
+        # Save to database
         if self.db_storage:
             try:
                 success = self.db_storage.save_watchlists(
@@ -117,37 +102,6 @@ class MultiWatchlistManager:
                 if self.debug_mode:
                     st.error(f"Error saving to database: {str(e)}")
                 success = False
-
-        # Fall back to cookies if database save failed or not available
-        if not success:
-            # Make a clean copy of the data to avoid any reference issues
-            data = {
-                "watchlists": st.session_state.watchlists.copy(),
-                "active_index": st.session_state.active_watchlist_index,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-
-            # Try saving with 3 retries
-            max_retries = 3
-            for i in range(max_retries):
-                success = self.cookie_manager.save_cookie(data)
-                if success:
-                    self.storage_status = "saved to cookies"
-                    break
-                elif i < max_retries - 1:
-                    # Wait briefly before retry
-                    import time
-                    time.sleep(0.1)
-                    if self.debug_mode:
-                        st.write(f"Retry {i+1} saving to cookies...")
-
-            if self.debug_mode:
-                if success:
-                    st.write(
-                        f"Saved {len(st.session_state.watchlists)} watchlists to cookies")
-                else:
-                    st.write("Failed to save watchlists to cookies")
-                    self.storage_status = "save_failed"
 
         return success
 
