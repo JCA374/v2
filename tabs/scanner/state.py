@@ -14,7 +14,7 @@ def initialize_scanner_state():
         st.session_state.failed_tickers = []
 
     if 'scanner_universe' not in st.session_state:
-        st.session_state.scanner_universe = "Mid Cap"
+        st.session_state.scanner_universe = "updated_mid.csv"  # Default to mid-cap CSV
 
     if 'universe_selectbox' not in st.session_state:
         st.session_state.universe_selectbox = st.session_state.scanner_universe
@@ -27,7 +27,6 @@ def initialize_scanner_state():
 
     if 'status_message' not in st.session_state:
         st.session_state.status_message = ""
-
 
 def reset_scanner_state():
     """Clear all scanner-related state for a fresh start."""

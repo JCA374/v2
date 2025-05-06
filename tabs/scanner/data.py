@@ -217,19 +217,8 @@ def load_csv_tickers(file_name):
     return []
 
 
-def load_ticker_list(universe="Mid Cap", custom_tickers="", scan_all=True):
+def load_ticker_list(universe="updated_mid.csv", custom_tickers="", scan_all=True):
     """Load the appropriate ticker list based on selected universe."""
-    # Map universe to CSV file
-    csv_file = {
-        "Small Cap": "updated_small.csv",
-        "Mid Cap": "updated_mid.csv",
-        "Large Cap": "updated_large.csv",
-        # Direct CSV path for Swedish stocks
-        "Swedish Stocks": "valid_swedish_company_data.csv",
-        # Automatically use the right CSV name if it exists in the current directory
-        "Sweden Company Data": "sweden_company_data.csv"
-    }.get(universe)
-
     # Get tickers based on selected universe
     if universe == "Failed Tickers":
         tickers = load_retry_tickers()
@@ -238,17 +227,13 @@ def load_ticker_list(universe="Mid Cap", custom_tickers="", scan_all=True):
             return []
         else:
             tickers = [[t, t] for t in tickers]
-    elif universe in ["Swedish Stocks", "Sweden Company Data"]:
-        # Load directly from CSV instead of using investpy
-        csv_file_to_use = SWEDEN_BACKUP_CSV if universe == "Swedish Stocks" else "sweden_company_data.csv"
-        tickers = load_csv_tickers(csv_file_to_use)
-        
-        if not tickers:
-            st.error(f"Failed to load {universe} from CSV file")
-            return []
     else:
-        # Load from specified CSV file
-        tickers = load_csv_tickers(csv_file)
+        # Load directly from CSV file
+        tickers = load_csv_tickers(universe)
+
+        if not tickers:
+            st.error(f"Failed to load {universe}")
+            return []
 
     # Limit or use all tickers based on scan_all flag
     if not scan_all and len(tickers) > 20:
@@ -265,6 +250,7 @@ def load_ticker_list(universe="Mid Cap", custom_tickers="", scan_all=True):
         tickers.extend(custom_tickers)
 
     return tickers
+
 
 def clear_completed_retries(completed_tickers):
     """Remove successfully completed tickers from the retry file."""

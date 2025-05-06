@@ -13,115 +13,46 @@ def build_settings_ui():
     # Initialize session state for Scanner universe
     if 'universe_selectbox' not in st.session_state:
         st.session_state.universe_selectbox = st.session_state.get(
-            'scanner_universe', "Mid Cap")
+            'scanner_universe', "updated_mid.csv")
 
-    # Map the selection to CSV files
-    universe_options = ["Small Cap", "Mid Cap",
-                        "Large Cap", "Swedish Stocks", "Sweden Company Data", "Failed Tickers"]
+    # CSV file options only - no more legacy name formats
+    universe_options = ["updated_small.csv", "updated_mid.csv",
+                        "updated_large.csv", "valid_swedish_company_data.csv", "Failed Tickers"]
 
     # Define callback to update session state without causing rerun
     def update_universe():
         # Only set scanner_universe if we're not in initial state
         if not st.session_state.get('prevent_tab_change', False):
+            # Save the selected CSV file to session state
             st.session_state.scanner_universe = st.session_state.universe_selectbox
         else:
             # After first use, allow normal behavior
             st.session_state.prevent_tab_change = False
 
-    # Get current selected universe (defaulting to Mid Cap)
-    current_universe = st.session_state.get('scanner_universe', "Mid Cap")
+    # Get current selected universe (defaulting to updated_mid.csv)
+    current_universe = st.session_state.get(
+        'scanner_universe', "updated_mid.csv")
+
+    # Set default to index 1 (updated_mid.csv) if not found
     current_index = universe_options.index(
         current_universe) if current_universe in universe_options else 1
 
     # UI section - Stock Universe
     st.subheader("Scanner Settings")
-    universe = st.selectbox("Stock Universe",
+    # Format options to show clear CSV file names
+
+    def format_universe_option(option):
+        if option == "Failed Tickers":
+            return option
+        return f"CSV: {option}"
+
+    universe = st.selectbox("Stock File",
                             options=universe_options,
                             index=current_index,
                             key="universe_selectbox",
-                            on_change=update_universe)
-
-    # UI for historical data settings
-    period_map = {"3 months": "3mo", "6 months": "6mo", "1 year": "1y"}
-    interval_map = {"Daily": "1d", "Weekly": "1wk"}
-
-    history = st.selectbox("History", list(period_map.keys()), index=0)
-    period = period_map[history]
-
-    interval_label = st.selectbox(
-        "Interval", list(interval_map.keys()), index=0)
-    interval = interval_map[interval_label]
-
-    # UI for technical filters
-    st.subheader("Technical Filters")
-    preset = st.selectbox(
-        "Preset", ["Conservative", "Balanced", "Aggressive", "Custom"], index=1)
-
-    presets = {
-        "Conservative": {"rsi": (40, 60), "vol_mul": 2.0, "lookback": 20},
-        "Balanced":   {"rsi": (30, 70), "vol_mul": 1.5, "lookback": 30},
-        "Aggressive": {"rsi": (20, 80), "vol_mul": 1.2, "lookback": 40}
-    }
-
-    if preset != "Custom":
-        rsi_min, rsi_max = presets[preset]["rsi"]
-        vol_mul = presets[preset]["vol_mul"]
-        lookback = presets[preset]["lookback"]
-        st.markdown(
-            f"**{preset}**: RSI {rsi_min}-{rsi_max}, Vol×{vol_mul}, EMA lookback {lookback}d")
-    else:
-        rsi_min, rsi_max = st.slider("RSI Range", 0, 100, (30, 70))
-        vol_mul = st.slider("Volume Multiplier (×20d avg)",
-                            0.1, 5.0, 1.5, step=0.1)
-        lookback = st.slider("EMA Crossover Lookback (days)", 5, 60, 30)
-
-    # Custom ticker input
-    st.subheader("Custom Tickers")
-    custom = st.text_input("Extra tickers (comma-separated)")
-
-    # Add batch size option - connect to session state
-    batch_size = st.slider("Process Batch Size", 5, 100, 25, step=5,
-                           key="batch_size",  # save to session_state
-                           help="Number of stocks to process at once. Lower for fewer API errors.")
-
-    # Add continuous scan option
-    continuous_scan = st.checkbox("Continuous Scanning",
-                                  value=True,
-                                  help="Continue scanning in small batches to avoid API limits")
-
-    # Add option to scan all stocks
-    scan_all_stocks = st.checkbox("Scan All Stocks",
-                                  value=True,
-                                  help="Scan all stocks in the selected CSV file")
-
-    # Action buttons
-    scan_btn = st.button(
-        "🔍 Run Scanner", disabled=st.session_state.get('scanner_running', False))
-    retry_btn = st.button(
-        "🔄 Retry Failed", disabled=st.session_state.get('scanner_running', False))
-    stop_btn = st.button(
-        "⏹️ Stop Scanner", disabled=not st.session_state.get('scanner_running', False))
-    clear_btn = st.button("🗑️ Clear Results")
-
-    # Return all settings as a dictionary
-    return {
-        "universe": universe,
-        "period": period,
-        "interval": interval,
-        "rsi_min": rsi_min,
-        "rsi_max": rsi_max,
-        "vol_mul": vol_mul,
-        "lookback": lookback,
-        "custom": custom,
-        "batch_size": batch_size,
-        "continuous_scan": continuous_scan,
-        "scan_all_stocks": scan_all_stocks,
-        "scan_btn": scan_btn,
-        "retry_btn": retry_btn,
-        "stop_btn": stop_btn,
-        "clear_btn": clear_btn
-    }
-
+                            on_change=update_universe,
+                            format_func=format_universe_option,
+                            help="Select a CSV file to scan or choose 'Failed Tickers' to retry previously failed scans.")
 
 def display_results(watchlist_manager=None):
     """Display scan results and handle watchlist integration."""
