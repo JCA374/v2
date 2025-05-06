@@ -1,6 +1,6 @@
+# strategy.py (updated with Yahoo Finance service integration)
 import pandas as pd
 import numpy as np
-import yfinance as yf
 import matplotlib.pyplot as plt
 import streamlit as st
 import time
@@ -8,6 +8,14 @@ import json
 import os
 from datetime import datetime, timedelta
 import logging
+
+# Import the Yahoo Finance service instead of yfinance directly
+from services.yahoo_finance_service import (
+    fetch_ticker_info,
+    fetch_history,
+    fetch_company_earnings,
+    extract_fundamental_data
+)
 
 
 class ValueMomentumStrategy:
@@ -31,19 +39,12 @@ class ValueMomentumStrategy:
         self.logger = logging.getLogger('ValueMomentumStrategy')
 
     def _fetch_info(self, ticker):
-        """Fetches yf.Ticker.info or raises RuntimeError."""
-        stock = yf.Ticker(ticker)
-        info = stock.info
-        if not isinstance(info, dict):
-            raise RuntimeError("No basic info returned")
-        return stock, info
+        """Fetches ticker info using the Yahoo Finance service."""
+        return fetch_ticker_info(ticker)
 
     def _fetch_history(self, stock, period="1y", interval="1wk"):
-        """Fetches history DataFrame or raises RuntimeError."""
-        hist = stock.history(period=period, interval=interval)
-        if hist is None or hist.empty:
-            raise RuntimeError("No historical data available")
-        return hist
+        """Fetches history using the Yahoo Finance service."""
+        return fetch_history(stock, period=period, interval=interval)
 
     # Improved RSI calculation from the new code
     def calculate_rsi(self, prices, window=14):
@@ -121,11 +122,8 @@ class ValueMomentumStrategy:
         """
         result = {"ticker": ticker, "error": None, "error_message": None}
         try:
-            # Get stock data
-            stock = yf.Ticker(ticker)
-
-            # Get basic info
-            info = stock.info
+            # Get stock data using our centralized service
+            stock, info = self._fetch_info(ticker)
 
             # Handle missing name
             try:
@@ -133,8 +131,8 @@ class ValueMomentumStrategy:
             except:
                 name = ticker
 
-            # Get historical data (weekly)
-            hist = stock.history(period="1y", interval="1wk")
+            # Get historical data (weekly) using our centralized service
+            hist = self._fetch_history(stock, period="1y", interval="1wk")
 
             if hist is None or hist.empty:
                 return {
@@ -299,9 +297,9 @@ class ValueMomentumStrategy:
             if profit_margin is not None and pd.notna(profit_margin):
                 results["profit_margin"] = profit_margin
 
-            # Get earnings trend data
+            # Get earnings trend data - now using our centralized service
             try:
-                earnings = stock.earnings
+                earnings = fetch_company_earnings(stock)
                 if earnings is not None and not earnings.empty and len(earnings) > 1:
                     # Calculate year-over-year earnings growth
                     yearly_growth = earnings['Earnings'].pct_change().dropna()

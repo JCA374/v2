@@ -2,389 +2,96 @@ import streamlit as st
 import traceback
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
-import yfinance as yf
 import numpy as np
 import pandas as pd
 
-
-def display_short_term_analysis(df, ticker, settings):
-    """Display the short-term analysis section."""
-    st.subheader("Short-Term Analysis (Hourly)")
-    c1, c2, c3 = st.columns(3)
-
-    # Last price move
-    with c1:
-        if 'Close' in df.columns and len(df) > 1:
-            # Get previous and last values as scalars, not Series
-            prev_close = df['Close'].iloc[-2]
-            last_close = df['Close'].iloc[-1]
-
-            if pd.notna(prev_close) and pd.notna(last_close):
-                delta = last_close - prev_close
-                delta_pct = 0
-                if prev_close != 0:
-                    delta_pct = (delta / prev_close) * 100
-                st.metric("Last Price", f"{last_close:.2f}",
-                          f"{delta:+.2f} ({delta_pct:.2f}%)")
-            elif pd.notna(last_close):
-                st.metric("Last Price", f"{last_close:.2f}", "Prev N/A")
-            else:
-                st.metric("Last Price", "N/A")
-        elif 'Close' in df.columns and len(df) == 1:
-            last_close = df['Close'].iloc[0]
-            if pd.notna(last_close):
-                st.metric("Last Price", f"{last_close:.2f}", "Single Point")
-            else:
-                st.metric("Last Price", "N/A")
-        else:
-            st.metric("Last Price", "N/A")
-
-    # RSI
-    with c2:
-        if 'RSI' in df.columns and not df['RSI'].empty:
-            rsi_val = df['RSI'].iloc[-1]
-            if pd.notna(rsi_val):
-                rsi_ob = settings["rsi_overbought"]
-                rsi_os = settings["rsi_oversold"]
-                status = "Overbought" if rsi_val > rsi_ob else "Oversold" if rsi_val < rsi_os else "Neutral"
-
-                # Calculate delta safely
-                delta = None
-                if len(df) > 1:
-                    prev_rsi = df['RSI'].iloc[-2]
-                    if pd.notna(prev_rsi):
-                        delta = rsi_val - prev_rsi
-
-                st.metric("RSI (14)", f"{rsi_val:.1f}", f"{status}", delta_color=(
-                    "inverse" if status == "Overbought" else "normal" if status == "Oversold" else "off"))
-            else:
-                st.metric("RSI (14)", "N/A")
-        else:
-            st.metric("RSI (14)", "N/A")
-
-    # EMA9 vs EMA20
-    with c3:
-        if 'EMA9' in df.columns and 'EMA20' in df.columns:
-            ema9_val = df['EMA9'].iloc[-1]
-            ema20_val = df['EMA20'].iloc[-1]
-
-            if pd.notna(ema9_val) and pd.notna(ema20_val):
-                status = "EMA9 > EMA20" if ema9_val > ema20_val else "EMA9 < EMA20" if ema9_val < ema20_val else "EMA9 = EMA20"
-
-                # Calculate percentage difference safely
-                delta_pct = 0
-                if ema20_val != 0:
-                    delta_pct = ((ema9_val - ema20_val) / ema20_val) * 100
-
-                st.metric("Fast EMAs", status, f"{delta_pct:.2f}% diff")
-            else:
-                st.metric("Fast EMAs", "N/A")
-        else:
-            st.metric("Fast EMAs", "N/A")
-
-    # Short-term signals & recommendation
-    st.subheader("Recent Signals (Hourly)")
-    buys = df.attrs.get('buy_signals', [])
-    sells = df.attrs.get('sell_signals', [])
-
-    # Look back e.g., 24 hours (assuming 6-8 trading hours / day -> 24 periods approx)
-    lookback_periods = 24
-
-    signal_found = False
-    if len(df) >= lookback_periods:
-        recent_buy_signal = buys and buys[-1][0] >= df.index[-lookback_periods]
-        recent_sell_signal = sells and sells[-1][0] >= df.index[-lookback_periods]
-
-        if recent_buy_signal:
-            st.success(
-                f"✅ EMA Crossover Buy Signal: {buys[-1][0].strftime('%Y-%m-%d %H:%M')}")
-            signal_found = True
-        if recent_sell_signal:
-            st.error(
-                f"❌ EMA Crossover Sell Signal: {sells[-1][0].strftime('%Y-%m-%d %H:%M')}")
-            signal_found = True
-
-    if not signal_found:
-        st.info(
-            f"No EMA Crossover signals in the last {lookback_periods} periods.")
-
-    st.subheader("Short-Term Recommendation")
-
-    # Get RSI value if available
-    rsi_val = None
-    if 'RSI' in df.columns:
-        rsi_val = df['RSI'].iloc[-1]
-
-    # Get EMA values if available
-    ema9_val = None
-    ema20_val = None
-    if 'EMA9' in df.columns:
-        ema9_val = df['EMA9'].iloc[-1]
-    if 'EMA20' in df.columns:
-        ema20_val = df['EMA20'].iloc[-1]
-
-    # Generate recommendation based on indicators
-    if pd.notna(rsi_val):
-        if rsi_val < settings["rsi_oversold"]:
-            st.markdown(
-                "💡 **Condition: Oversold.** Potential for a short-term bounce. Look for confirmation before entering long.")
-        elif rsi_val > settings["rsi_overbought"]:
-            st.markdown(
-                "💡 **Condition: Overbought.** Potential for a pullback or consolidation. Consider taking profits on long positions or waiting for entry.")
-        elif signal_found and recent_buy_signal and pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val > ema20_val:
-            st.markdown(
-                "💡 **Signal: Recent Buy.** Momentum aligned with recent buy signal. May continue upward, but manage risk (e.g., trailing stop).")
-        elif signal_found and recent_sell_signal and pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val < ema20_val:
-            st.markdown(
-                "💡 **Signal: Recent Sell.** Momentum aligned with recent sell signal. May continue downward. Consider exiting long or potential short entry.")
-        elif pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val > ema20_val:
-            st.markdown(
-                "💡 **Trend: EMA9 > EMA20.** Short-term momentum is currently bullish, but RSI is neutral. Monitor for continuation or divergence.")
-        elif pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val < ema20_val:
-            st.markdown(
-                "💡 **Trend: EMA9 < EMA20.** Short-term momentum is currently bearish, but RSI is neutral. Monitor for continuation or divergence.")
-        else:
-            st.markdown(
-                "💡 **Condition: Neutral.** RSI is neutral and no strong recent signals/trends. Wait for clearer short-term direction.")
-    else:
-        # tabs/multi_timeframe_tab.py
-        st.markdown("💡 Waiting for sufficient data for short-term analysis.")
-
+# Import the Yahoo Finance service instead of using yfinance directly
+from services.yahoo_finance_service import fetch_history
 
 # Define configuration for different timeframes
 TIMEFRAME_CONFIG = {
-    "long": {"period": "5y", "interval": "1wk", "title": "Long-Term Weekly Chart",
-             "indicators": {"sma": [50, 200], "ema": [50, 200], "rsi_period": 14}},
-    "medium": {"period": "1y", "interval": "1d", "title": "Medium-Term Daily Chart",
-               "indicators": {"sma": [20, 50, 200], "ema": [20, 50, 200], "rsi_period": 14}},
-    "short": {"period": "1mo", "interval": "60m", "title": "Short-Term Hourly Chart",
-              "indicators": {"sma": [20, 50], "ema": [9, 20], "rsi_period": 14}}
+    "long": {
+        "period": "5y",
+        "interval": "1wk",
+        "title": "Long-Term Weekly Chart",
+        "indicators": {
+            "sma": [50, 200],
+            "ema": [50, 200],
+            "rsi_period": 14
+        }
+    },
+    "medium": {
+        "period": "1y",
+        "interval": "1d",
+        "title": "Medium-Term Daily Chart",
+        "indicators": {
+            "sma": [20, 50, 200],
+            "ema": [20, 50, 200],
+            "rsi_period": 14
+        }
+    },
+    "short": {
+        "period": "1mo",
+        "interval": "60m",
+        "title": "Short-Term Hourly Chart",
+        "indicators": {
+            "sma": [20, 50],
+            "ema": [9, 20],
+            "rsi_period": 14
+        }
+    }
 }
 
-# Default settings (consider making MA periods dynamic based on timeframe if needed)
-DEFAULT_SETTINGS = {"rsi_oversold": 30, "rsi_overbought": 70,
-                    "ma_short": 20, "ma_medium": 50, "ma_long": 200,
-                    # Add MACD defaults if you want them configurable
-                    "macd_fast": 12, "macd_slow": 26, "macd_signal": 9}
+# Default settings
+DEFAULT_SETTINGS = {
+    "rsi_oversold": 30,
+    "rsi_overbought": 70,
+    "ma_short": 20,
+    "ma_medium": 50,
+    "ma_long": 200,
+    "macd_fast": 12,
+    "macd_slow": 26,
+    "macd_signal": 9
+}
 
 
-def render_multi_timeframe_tab():
-    st.header("Multi-Timeframe Technical Analysis")
-    if 'mta_settings' not in st.session_state:
-        st.session_state.mta_settings = DEFAULT_SETTINGS.copy()
-
-    # Access session state items safely
-    # Assuming this might be used later
-    strategy = st.session_state.get("strategy")
-    watchlist_manager = st.session_state.get("watchlist_manager")
-
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.subheader("Select Stock")
-        unique_tickers = []
-        if watchlist_manager:
-            try:
-                all_watchlists = watchlist_manager.get_all_watchlists()
-                unique_tickers = sorted(
-                    {t for wl in all_watchlists for t in wl.get(
-                        "stocks", [])}  # Safer access
-                )
-            except Exception as e:
-                st.warning(f"Could not load watchlists: {e}")
-
-        manual = st.text_input("Enter ticker symbol:",
-                               placeholder="e.g., AAPL").strip().upper()
-        select_options = [""] + unique_tickers
-        select = st.selectbox("Or select from watchlist:", select_options)
-        ticker = manual or select
-
-        with st.expander("Analysis Settings"):
-            s = st.session_state.mta_settings
-            s["rsi_oversold"] = st.slider(
-                "RSI Oversold Threshold", 10, 40, s["rsi_oversold"])
-            s["rsi_overbought"] = st.slider(
-                "RSI Overbought Threshold", 60, 90, s["rsi_overbought"])
-            # Note: These MA sliders currently don't directly affect the fixed MAs (50/200 etc)
-            # used in the analysis logic unless TIMEFRAME_CONFIG is updated dynamically.
-            s["ma_short"] = st.slider("Short MA Period", 5, 50, s["ma_short"])
-            s["ma_medium"] = st.slider(
-                "Medium MA Period", 20, 100, s["ma_medium"])
-            s["ma_long"] = st.slider("Long MA Period", 100, 300, s["ma_long"])
-
-            # Optional: Add sliders for MACD if desired
-            # s["macd_fast"] = st.slider("MACD Fast EMA", 5, 20, s["macd_fast"])
-            # s["macd_slow"] = st.slider("MACD Slow EMA", 20, 50, s["macd_slow"])
-            # s["macd_signal"] = st.slider("MACD Signal EMA", 5, 15, s["macd_signal"])
-
-            if st.button("Reset to Defaults"):
-                st.session_state.mta_settings = DEFAULT_SETTINGS.copy()
-                st.rerun()
-
-        analyze_clicked = st.button(
-            "Analyze", key="analyze_mta", disabled=not ticker)
-
-    with col2:
-        if not ticker:
-            st.info("Please enter or select a ticker symbol.")
-            return
-        if not analyze_clicked:
-            st.info("Click 'Analyze' to load data.")
-            return
-
-        # Store fetched data in session state to avoid re-fetching when switching tabs
-        if 'mta_data' not in st.session_state:
-            st.session_state.mta_data = {}
-        if 'current_mta_ticker' not in st.session_state:
-            st.session_state.current_mta_ticker = None
-
-        # If ticker changed or analyze clicked, clear old data and fetch new
-        if st.session_state.current_mta_ticker != ticker or analyze_clicked:
-            st.session_state.mta_data = {}  # Clear cache for other timeframes
-            st.session_state.current_mta_ticker = ticker
-
-        tabs = st.tabs(["Long-Term", "Medium-Term", "Short-Term"])
-        for tab, key in zip(tabs, ["long", "medium", "short"]):
-            with tab:
-                title = TIMEFRAME_CONFIG[key]["title"]
-                st.subheader(title)
-
-                # Check cache before fetching
-                df = st.session_state.mta_data.get(key)
-
-                if df is None:  # Not in cache, fetch it
-                    with st.spinner(f"Loading {key}-term data for {ticker}..."):
-                        try:
-                            df = get_analyzed_data(
-                                ticker, key, st.session_state.mta_settings)
-                            # Store in cache
-                            st.session_state.mta_data[key] = df
-                        except Exception as e:
-                            st.error(
-                                f"An error occurred while fetching/analyzing data: {e}")
-                            st.exception(e)  # Show traceback if needed
-                            df = None  # Ensure df is None on error
-                            # Cache the failure
-                            st.session_state.mta_data[key] = None
-
-                # Display data or error
-                if df is None:
-                    st.error(
-                        f"Could not load or process {key}-term data for {ticker}.")
-                elif df.empty:
-                    st.warning(f"No {key}-term data returned for {ticker}.")
-                else:
-                    # Pass settings to analysis functions
-                    settings = st.session_state.mta_settings
-                    if key == "long":
-                        # First plot the chart
-                        st.plotly_chart(
-                            plot_chart(
-                                df, TIMEFRAME_CONFIG[key]["title"], ticker),
-                            use_container_width=True
-                        )
-                        # Then display the analysis
-                        display_long_term_analysis(df, ticker, settings)
-                    elif key == "medium":
-                        # First plot the chart
-                        st.plotly_chart(
-                            plot_chart(
-                                df, TIMEFRAME_CONFIG[key]["title"], ticker),
-                            use_container_width=True
-                        )
-                        # Then display the analysis
-                        display_medium_term_analysis(df, ticker, settings)
-                    elif key == "short":
-                        # First plot the chart
-                        st.plotly_chart(
-                            plot_chart(
-                                df, TIMEFRAME_CONFIG[key]["title"], ticker),
-                            use_container_width=True
-                        )
-                        # Then display the analysis
-                        display_short_term_analysis(df, ticker, settings)
-
-
-# Cache data fetched from yfinance
 @st.cache_data(ttl=1800)  # Cache for 30 minutes
 def fetch_data(symbol: str, period: str, interval: str) -> pd.DataFrame | None:
-    """Fetches data using yfinance, handling potential tuple columns."""
+    """
+    Fetches data using the centralized Yahoo Finance service.
+    
+    Args:
+        symbol: The ticker symbol to fetch
+        period: Time period to fetch (e.g., "1y", "3mo", "5y")
+        interval: Data interval (e.g., "1d", "1wk")
+        
+    Returns:
+        DataFrame: Historical price data or None if there was an error
+    """
     try:
-        # Fetch data - keep auto_adjust=False as it often gives cleaner raw data
-        df = yf.download(symbol, period=period, interval=interval, auto_adjust=False,
-                         progress=False, actions=False)  # Explicitly disable actions columns
+        # Use our centralized service to fetch the data
+        # Keep auto_adjust=False as noted in the original implementation
+        df = fetch_history(symbol, period=period,
+                           interval=interval, auto_adjust=False, actions=False)
 
         if df is None or df.empty:
             st.warning(
-                f"No data returned by yfinance for {symbol} ({period}, {interval})")
+                f"No data returned by Yahoo Finance for {symbol} ({period}, {interval})")
             return None
 
-        # --- Robust Column Identification and Selection ---
-        # Define required columns in lowercase for case-insensitive matching
-        required_cols_lower = ['open', 'high', 'low', 'close', 'volume']
-        # Mapping from standardized capitalized name to the original column identifier found
-        column_mapping = {}
+        # Access logging and debug info from the processed data
+        st.session_state.last_data_fetch = {
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "rows": len(df) if df is not None else 0
+        }
 
-        for col in df.columns:
-            # Keep the original (could be string or tuple)
-            original_col_identifier = col
-            col_name_to_check = None
-
-            if isinstance(col, tuple) and col:
-                # If it's a tuple, take the first element as the potential name
-                # Convert to string just in case it's not, and then lowercase
-                col_name_to_check = str(col[0]).lower()
-            elif isinstance(col, str):
-                # If it's a string, lowercase it
-                col_name_to_check = col.lower()
-            else:
-                # Skip unexpected column types
-                continue
-
-            # If this column matches one of our required columns
-            if col_name_to_check in required_cols_lower:
-                # Standardize the name (e.g., 'open' -> 'Open')
-                standard_name = col_name_to_check.capitalize()
-                # Store the mapping: Standard Name -> Original Identifier
-                # Avoid overwriting if multiple columns somehow map (e.g., 'Adj Close' vs 'Close')
-                # Prioritize direct matches if possible, but usually OHLCV are unique.
-                if standard_name not in column_mapping:
-                    column_mapping[standard_name] = original_col_identifier
-
-        # Check if all required columns were found and mapped
-        required_cols_cap = ['Open', 'High', 'Low', 'Close', 'Volume']
-        if not all(c in column_mapping for c in required_cols_cap):
-            st.error(
-                f"Data for {symbol} missing required OHLCV columns. Found mappings: {list(column_mapping.keys())}")
-            # Optionally print df.columns here for debugging:
-            # st.warning(f"Original columns for {symbol}: {df.columns}")
-            return None
-
-        # Select only the required columns using their original identifiers
-        df_selected = df[[column_mapping[std_name]
-                          for std_name in required_cols_cap]]
-
-        # Rename the columns of the *selected* DataFrame to the standard names
-        df_selected.columns = required_cols_cap
-
-        # Now work with the cleaned df_selected
-        df = df_selected
-        # --- End of Robust Column Handling ---
-
-        # Final checks on the cleaned data
-        if df['Close'].isnull().all():
-            st.error(
-                f"Cleaned data for {symbol} contains only null 'Close' prices.")
-            return None
-
-        # Ensure index is datetime (yf usually does this, but good practice)
-        if not isinstance(df.index, pd.DatetimeIndex):
-            df.index = pd.to_datetime(df.index)
-
-        return df.copy()  # Return a copy
+        return df
 
     except Exception as e:
-        st.error(f"Error during data fetch or processing for {symbol}: {e}")
-        # st.exception(e) # Uncomment for detailed traceback in the Streamlit app
+        st.error(f"An error occurred while fetching data for {symbol}: {e}")
         return None
 
 
@@ -411,7 +118,17 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
 
 
 def get_analyzed_data(symbol: str, tf: str, settings: dict) -> pd.DataFrame | None:
-    """Fetches and analyzes data for a given timeframe."""
+    """
+    Fetches and analyzes data for a given timeframe.
+    
+    Args:
+        symbol: The ticker symbol
+        tf: Timeframe key ("long", "medium", or "short")
+        settings: Dictionary of analysis settings
+        
+    Returns:
+        DataFrame with calculated indicators or None if there was an error
+    """
     cfg = TIMEFRAME_CONFIG[tf]
     df = fetch_data(symbol, cfg["period"], cfg["interval"])
 
@@ -796,3 +513,284 @@ def display_medium_term_analysis(df, ticker, settings):
     else:
         st.markdown(
             "➖ **Recommendation: Mixed/Neutral.** Indicators are conflicting or neutral. Wait for clearer confirmation.")
+
+
+def display_short_term_analysis(df, ticker, settings):
+    """Display the short-term analysis section."""
+    st.subheader("Short-Term Analysis (Hourly)")
+    c1, c2, c3 = st.columns(3)
+
+    # Last price move
+    with c1:
+        if 'Close' in df.columns and len(df) > 1:
+            # Get previous and last values as scalars, not Series
+            prev_close = df['Close'].iloc[-2]
+            last_close = df['Close'].iloc[-1]
+
+            if pd.notna(prev_close) and pd.notna(last_close):
+                delta = last_close - prev_close
+                delta_pct = 0
+                if prev_close != 0:
+                    delta_pct = (delta / prev_close) * 100
+                st.metric("Last Price", f"{last_close:.2f}",
+                          f"{delta:+.2f} ({delta_pct:.2f}%)")
+            elif pd.notna(last_close):
+                st.metric("Last Price", f"{last_close:.2f}", "Prev N/A")
+            else:
+                st.metric("Last Price", "N/A")
+        elif 'Close' in df.columns and len(df) == 1:
+            last_close = df['Close'].iloc[0]
+            if pd.notna(last_close):
+                st.metric("Last Price", f"{last_close:.2f}", "Single Point")
+            else:
+                st.metric("Last Price", "N/A")
+        else:
+            st.metric("Last Price", "N/A")
+
+    # RSI
+    with c2:
+        if 'RSI' in df.columns and not df['RSI'].empty:
+            rsi_val = df['RSI'].iloc[-1]
+            if pd.notna(rsi_val):
+                rsi_ob = settings["rsi_overbought"]
+                rsi_os = settings["rsi_oversold"]
+                status = "Overbought" if rsi_val > rsi_ob else "Oversold" if rsi_val < rsi_os else "Neutral"
+
+                # Calculate delta safely
+                delta = None
+                if len(df) > 1:
+                    prev_rsi = df['RSI'].iloc[-2]
+                    if pd.notna(prev_rsi):
+                        delta = rsi_val - prev_rsi
+
+                st.metric("RSI (14)", f"{rsi_val:.1f}", f"{status}", delta_color=(
+                    "inverse" if status == "Overbought" else "normal" if status == "Oversold" else "off"))
+            else:
+                st.metric("RSI (14)", "N/A")
+        else:
+            st.metric("RSI (14)", "N/A")
+
+    # EMA9 vs EMA20
+    with c3:
+        if 'EMA9' in df.columns and 'EMA20' in df.columns:
+            ema9_val = df['EMA9'].iloc[-1]
+            ema20_val = df['EMA20'].iloc[-1]
+
+            if pd.notna(ema9_val) and pd.notna(ema20_val):
+                status = "EMA9 > EMA20" if ema9_val > ema20_val else "EMA9 < EMA20" if ema9_val < ema20_val else "EMA9 = EMA20"
+
+                # Calculate percentage difference safely
+                delta_pct = 0
+                if ema20_val != 0:
+                    delta_pct = ((ema9_val - ema20_val) / ema20_val) * 100
+
+                st.metric("Fast EMAs", status, f"{delta_pct:.2f}% diff")
+            else:
+                st.metric("Fast EMAs", "N/A")
+        else:
+            st.metric("Fast EMAs", "N/A")
+
+    # Short-term signals & recommendation
+    st.subheader("Recent Signals (Hourly)")
+    buys = df.attrs.get('buy_signals', [])
+    sells = df.attrs.get('sell_signals', [])
+
+    # Look back e.g., 24 hours (assuming 6-8 trading hours / day -> 24 periods approx)
+    lookback_periods = 24
+
+    signal_found = False
+    if len(df) >= lookback_periods:
+        recent_buy_signal = buys and buys[-1][0] >= df.index[-lookback_periods]
+        recent_sell_signal = sells and sells[-1][0] >= df.index[-lookback_periods]
+
+        if recent_buy_signal:
+            st.success(
+                f"✅ EMA Crossover Buy Signal: {buys[-1][0].strftime('%Y-%m-%d %H:%M')}")
+            signal_found = True
+        if recent_sell_signal:
+            st.error(
+                f"❌ EMA Crossover Sell Signal: {sells[-1][0].strftime('%Y-%m-%d %H:%M')}")
+            signal_found = True
+
+    if not signal_found:
+        st.info(
+            f"No EMA Crossover signals in the last {lookback_periods} periods.")
+
+    st.subheader("Short-Term Recommendation")
+
+    # Get RSI value if available
+    rsi_val = None
+    if 'RSI' in df.columns:
+        rsi_val = df['RSI'].iloc[-1]
+
+    # Get EMA values if available
+    ema9_val = None
+    ema20_val = None
+    if 'EMA9' in df.columns:
+        ema9_val = df['EMA9'].iloc[-1]
+    if 'EMA20' in df.columns:
+        ema20_val = df['EMA20'].iloc[-1]
+
+    # Generate recommendation based on indicators
+    if pd.notna(rsi_val):
+        if rsi_val < settings["rsi_oversold"]:
+            st.markdown(
+                "💡 **Condition: Oversold.** Potential for a short-term bounce. Look for confirmation before entering long.")
+        elif rsi_val > settings["rsi_overbought"]:
+            st.markdown(
+                "💡 **Condition: Overbought.** Potential for a pullback or consolidation. Consider taking profits on long positions or waiting for entry.")
+        elif signal_found and recent_buy_signal and pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val > ema20_val:
+            st.markdown(
+                "💡 **Signal: Recent Buy.** Momentum aligned with recent buy signal. May continue upward, but manage risk (e.g., trailing stop).")
+        elif signal_found and recent_sell_signal and pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val < ema20_val:
+            st.markdown(
+                "💡 **Signal: Recent Sell.** Momentum aligned with recent sell signal. May continue downward. Consider exiting long or potential short entry.")
+        elif pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val > ema20_val:
+            st.markdown(
+                "💡 **Trend: EMA9 > EMA20.** Short-term momentum is currently bullish, but RSI is neutral. Monitor for continuation or divergence.")
+        elif pd.notna(ema9_val) and pd.notna(ema20_val) and ema9_val < ema20_val:
+            st.markdown(
+                "💡 **Trend: EMA9 < EMA20.** Short-term momentum is currently bearish, but RSI is neutral. Monitor for continuation or divergence.")
+        else:
+            st.markdown(
+                "💡 **Condition: Neutral.** RSI is neutral and no strong recent signals/trends. Wait for clearer short-term direction.")
+    else:
+        st.markdown("💡 Waiting for sufficient data for short-term analysis.")
+
+
+def render_multi_timeframe_tab():
+    """Main function to render the multi-timeframe analysis tab."""
+    st.header("Multi-Timeframe Technical Analysis")
+
+    # Initialize settings if not already in session state
+    if 'mta_settings' not in st.session_state:
+        st.session_state.mta_settings = DEFAULT_SETTINGS.copy()
+
+    # Access session state items safely
+    strategy = st.session_state.get("strategy")
+    watchlist_manager = st.session_state.get("watchlist_manager")
+
+    col1, col2 = st.columns([1, 3])
+
+    with col1:
+        st.subheader("Select Stock")
+
+        # Get unique tickers from watchlists
+        unique_tickers = []
+        if watchlist_manager:
+            try:
+                all_watchlists = watchlist_manager.get_all_watchlists()
+                unique_tickers = sorted(
+                    {t for wl in all_watchlists for t in wl.get("stocks", [])}
+                )
+            except Exception as e:
+                st.warning(f"Could not load watchlists: {e}")
+
+        # Manual ticker input
+        manual = st.text_input("Enter ticker symbol:",
+                               placeholder="e.g., AAPL").strip().upper()
+
+        # Dropdown selection from watchlist
+        select_options = [""] + unique_tickers
+        select = st.selectbox("Or select from watchlist:", select_options)
+
+        # Determine which ticker to use (manual input or selection)
+        ticker = manual or select
+
+        # Analysis settings expander
+        with st.expander("Analysis Settings"):
+            s = st.session_state.mta_settings
+
+            # RSI settings
+            s["rsi_oversold"] = st.slider(
+                "RSI Oversold Threshold", 10, 40, s["rsi_oversold"])
+            s["rsi_overbought"] = st.slider(
+                "RSI Overbought Threshold", 60, 90, s["rsi_overbought"])
+
+            # Moving Average settings
+            s["ma_short"] = st.slider("Short MA Period", 5, 50, s["ma_short"])
+            s["ma_medium"] = st.slider(
+                "Medium MA Period", 20, 100, s["ma_medium"])
+            s["ma_long"] = st.slider("Long MA Period", 100, 300, s["ma_long"])
+
+            # Reset to defaults button
+            if st.button("Reset to Defaults"):
+                st.session_state.mta_settings = DEFAULT_SETTINGS.copy()
+                st.rerun()
+
+        # Analyze button
+        analyze_clicked = st.button(
+            "Analyze", key="analyze_mta", disabled=not ticker)
+
+    with col2:
+        if not ticker:
+            st.info("Please enter or select a ticker symbol.")
+            return
+
+        if not analyze_clicked:
+            st.info("Click 'Analyze' to load data.")
+            return
+
+        # Store fetched data in session state to avoid re-fetching when switching tabs
+        if 'mta_data' not in st.session_state:
+            st.session_state.mta_data = {}
+
+        if 'current_mta_ticker' not in st.session_state:
+            st.session_state.current_mta_ticker = None
+
+        # If ticker changed or analyze clicked, clear old data and fetch new
+        if st.session_state.current_mta_ticker != ticker or analyze_clicked:
+            st.session_state.mta_data = {}  # Clear cache for other timeframes
+            st.session_state.current_mta_ticker = ticker
+
+        # Create tabs for each timeframe
+        tabs = st.tabs(["Long-Term", "Medium-Term", "Short-Term"])
+
+        # Process each timeframe in its corresponding tab
+        for tab, key in zip(tabs, ["long", "medium", "short"]):
+            with tab:
+                title = TIMEFRAME_CONFIG[key]["title"]
+                st.subheader(title)
+
+                # Check cache before fetching
+                df = st.session_state.mta_data.get(key)
+
+                # If not in cache, fetch and analyze data
+                if df is None:
+                    with st.spinner(f"Loading {key}-term data for {ticker}..."):
+                        try:
+                            df = get_analyzed_data(
+                                ticker, key, st.session_state.mta_settings)
+                            # Store in cache
+                            st.session_state.mta_data[key] = df
+                        except Exception as e:
+                            st.error(
+                                f"An error occurred while fetching/analyzing data: {e}")
+                            st.exception(e)  # Show traceback if needed
+                            df = None  # Ensure df is None on error
+                            # Cache the failure
+                            st.session_state.mta_data[key] = None
+
+                # Display data or error
+                if df is None:
+                    st.error(
+                        f"Could not load or process {key}-term data for {ticker}.")
+                elif df.empty:
+                    st.warning(f"No {key}-term data returned for {ticker}.")
+                else:
+                    # Pass settings to analysis functions
+                    settings = st.session_state.mta_settings
+
+                    # First plot the chart, then display the analysis
+                    st.plotly_chart(
+                        plot_chart(df, TIMEFRAME_CONFIG[key]["title"], ticker),
+                        use_container_width=True
+                    )
+
+                    # Display the appropriate analysis based on timeframe
+                    if key == "long":
+                        display_long_term_analysis(df, ticker, settings)
+                    elif key == "medium":
+                        display_medium_term_analysis(df, ticker, settings)
+                    elif key == "short":
+                        display_short_term_analysis(df, ticker, settings)
