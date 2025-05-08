@@ -83,12 +83,26 @@ def render_analysis_results(analysis, strategy, watchlist_manager):
     st.markdown(
         f"<h3 style='color:{signal_color}'>Signal: {signal_text}</h3>", unsafe_allow_html=True)
 
-    # Add a small data source indicator
-    source = analysis.get("data_source", "Unknown")
-    if source:
-        source_color = "green" if source == "local" else "blue" if source == "yahoo" else "orange" if source == "alphavantage" else "gray"
-        st.markdown(
-            f"<small>Data source: <span style='color:{source_color}'>{source}</span></small>", unsafe_allow_html=True)
+    # Add a data source indicator
+    source = analysis.get("data_source", "unknown")
+    source_display = {
+        "yahoo": "Yahoo Finance",
+        "alphavantage": "Alpha Vantage",
+        "local": "Local Cache",
+        "unknown": "Unknown Source"
+    }.get(source, source)
+
+    source_color = {
+        "yahoo": "#0077b6",  # Blue for Yahoo
+        "alphavantage": "#ff9e00",  # Orange for Alpha Vantage
+        "local": "#2e8b57",  # Green for local cache
+        "unknown": "#6c757d"  # Gray for unknown
+    }.get(source, "#6c757d")
+
+    st.markdown(
+        f"<div style='margin-bottom:15px;'><span style='background-color:{source_color}; color:white; padding:3px 8px; border-radius:10px; font-size:0.8em'>Data source: {source_display}</span></div>",
+        unsafe_allow_html=True
+    )
 
     # Show watchlist options - updated to allow adding to any watchlist
     st.subheader("Lägg till i watchlist")
@@ -179,3 +193,4 @@ def render_analysis_results(analysis, strategy, watchlist_manager):
                     f"Jämförelse mellan {analysis['ticker']} och {compare_ticker} är inte implementerad ännu.")
             else:
                 st.warning("Ange en ticker att jämföra med")
+

@@ -131,17 +131,15 @@ class ValueMomentumStrategy:
         Returns:
         - Dictionary with analysis results
         """
-
-
-        # Track data source
-        data_source = "local"  # Default to local if it's coming from the database
-        if 'source' in info and isinstance(info['source'], str):
-            data_source = info['source'].lower()
-
         result = {"ticker": ticker, "error": None, "error_message": None}
         try:
             # Get stock data using our centralized service
             stock, info = self._fetch_info(ticker)
+
+            # Track data source
+            data_source = "local"  # Default to local if it's coming from the database
+            if 'source' in info and isinstance(info['source'], str):
+                data_source = info['source'].lower()
 
             # Handle missing name
             try:
@@ -203,14 +201,14 @@ class ValueMomentumStrategy:
                 "historical_data": processed_hist,  # Use the processed data with indicators
                 # Add the latest RSI value directly
                 "rsi": tech_analysis.get('rsi', None),
+                # Add data source information
+                "data_source": data_source
             }
 
             # Combine technical and fundamental indicators into result
             result.update(tech_analysis)
             result.update(fund_analysis)
 
-            result["data_source"] = data_source
-            
             return result
 
         except Exception as e:

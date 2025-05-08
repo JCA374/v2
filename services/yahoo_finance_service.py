@@ -1,16 +1,10 @@
 # services/yahoo_finance_service.py
-"""
-Centralized service for fetching financial data from Yahoo Finance API.
-This module provides a unified interface for all Yahoo Finance API calls in the application.
-"""
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import time
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 # Configure logging
@@ -20,9 +14,19 @@ logger = logging.getLogger('yahoo_finance_service')
 
 # Constants
 CACHE_TTL = 7200  # 2 hour cache
-RATE_LIMIT_WAIT = 30  # Base wait time in seconds when rate limited
 MAX_RETRIES = 3  # Maximum number of retries for API failures
+RETRY_WAIT_TIMES = [5, 10, 15]  # Seconds to wait for each retry attempt
 DEFAULT_BATCH_SIZE = 25  # Default batch size for bulk requests
+
+# Mock stock class for compatibility with Alpha Vantage service
+
+
+class MockStock:
+    """Mock stock object to provide compatibility with Alpha Vantage service"""
+
+    def __init__(self, ticker, info):
+        self.ticker = ticker
+        self.info = info
 
 
 @st.cache_data(ttl=CACHE_TTL)
@@ -36,9 +40,9 @@ def fetch_ticker_info(ticker):
     Returns:
         tuple: (stock object, info dictionary) or raises exception
     """
-    logger.info(f"Fetching info for {ticker}")
+    logger.info(f"Yahoo Finance: Fetching info for {ticker}")
 
-    for retry in range(MAX_RETRIES):
+    for retry_idx in range(MAX_RETRIES):
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
@@ -46,20 +50,25 @@ def fetch_ticker_info(ticker):
             if not isinstance(info, dict):
                 raise RuntimeError("No basic info returned")
 
+            # Add source information
+            info['source'] = 'yahoo'
+
             return stock, info
 
         except Exception as e:
             if "rate" in str(e).lower() or "limit" in str(e).lower():
-                # Exponential backoff for rate limits
-                wait_time = RATE_LIMIT_WAIT * (2 ** retry)
+                # Use specific wait times rather than exponential backoff
+                wait_time = RETRY_WAIT_TIMES[min(
+                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
                 logger.warning(
-                    f"Rate limit hit fetching {ticker}. Waiting {wait_time}s before retry {retry+1}/{MAX_RETRIES}")
+                    f"Rate limit hit fetching {ticker}. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
                 time.sleep(wait_time)
-            elif retry < MAX_RETRIES - 1:
-                # For other errors, wait a bit less
-                wait_time = 5 * (retry + 1)
+            elif retry_idx < MAX_RETRIES - 1:
+                # For other errors, use same wait times
+                wait_time = RETRY_WAIT_TIMES[min(
+                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
                 logger.warning(
-                    f"Error fetching {ticker}: {str(e)}. Retrying in {wait_time}s ({retry+1}/{MAX_RETRIES})")
+                    f"Error fetching {ticker}: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
                 time.sleep(wait_time)
             else:
                 # Last retry failed
@@ -88,9 +97,10 @@ def fetch_history(ticker, period="1y", interval="1wk", auto_adjust=True, actions
     Returns:
         DataFrame: Historical price data or raises exception
     """
-    logger.info(f"Fetching history for {ticker} ({period}, {interval})")
+    logger.info(
+        f"Yahoo Finance: Fetching history for {ticker} ({period}, {interval})")
 
-    for retry in range(MAX_RETRIES):
+    for retry_idx in range(MAX_RETRIES):
         try:
             # If we have a stock object, use it directly
             if isinstance(ticker, yf.Ticker):
@@ -107,20 +117,25 @@ def fetch_history(ticker, period="1y", interval="1wk", auto_adjust=True, actions
                 raise RuntimeError(
                     f"No historical data available for {ticker_symbol}")
 
+            # Add source column
+            hist['source'] = 'yahoo'
+
             return hist
 
         except Exception as e:
             if "rate" in str(e).lower() or "limit" in str(e).lower():
-                # Exponential backoff for rate limits
-                wait_time = RATE_LIMIT_WAIT * (2 ** retry)
+                # Use specific wait times rather than exponential backoff
+                wait_time = RETRY_WAIT_TIMES[min(
+                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
                 logger.warning(
-                    f"Rate limit hit fetching history for {ticker_symbol}. Waiting {wait_time}s before retry {retry+1}/{MAX_RETRIES}")
+                    f"Rate limit hit fetching history for {ticker_symbol}. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
                 time.sleep(wait_time)
-            elif retry < MAX_RETRIES - 1:
-                # For other errors, wait a bit less
-                wait_time = 5 * (retry + 1)
+            elif retry_idx < MAX_RETRIES - 1:
+                # For other errors, use same wait times
+                wait_time = RETRY_WAIT_TIMES[min(
+                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
                 logger.warning(
-                    f"Error fetching history for {ticker_symbol}: {str(e)}. Retrying in {wait_time}s ({retry+1}/{MAX_RETRIES})")
+                    f"Error fetching history for {ticker_symbol}: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
                 time.sleep(wait_time)
             else:
                 # Last retry failed
@@ -181,7 +196,7 @@ def fetch_bulk_data(tickers, period="1y", interval="1wk", batch_size=DEFAULT_BAT
             f"Fetching batch {batch_idx+1}/{(total_tickers + batch_size - 1) // batch_size} ({len(batch_symbols)} tickers)")
 
         # Try to fetch data with retries
-        for retry in range(MAX_RETRIES):
+        for retry_idx in range(MAX_RETRIES):
             try:
                 data = yf.download(
                     tickers=batch_symbols,
@@ -199,11 +214,16 @@ def fetch_bulk_data(tickers, period="1y", interval="1wk", batch_size=DEFAULT_BAT
                         if sym in data.columns.levels[0]:
                             df_sym = data[sym].copy()
                             if not df_sym.empty:
+                                # Add source info
+                                df_sym['source'] = 'yahoo'
                                 result[orig] = df_sym
                 else:
                     # Single ticker returned
                     if len(batch_symbols) == 1 and not data.empty:
-                        result[batch[0][0]] = data.copy()
+                        # Add source info
+                        data_copy = data.copy()
+                        data_copy['source'] = 'yahoo'
+                        result[batch[0][0]] = data_copy
 
                 # Success! Break the retry loop
                 break
@@ -212,25 +232,27 @@ def fetch_bulk_data(tickers, period="1y", interval="1wk", batch_size=DEFAULT_BAT
                 error_msg = str(e).lower()
 
                 if "rate" in error_msg or "limit" in error_msg:
-                    # Exponential backoff for rate limits
-                    wait_time = RATE_LIMIT_WAIT * (2 ** retry)
+                    # Use specific wait times rather than exponential backoff
+                    wait_time = RETRY_WAIT_TIMES[min(
+                        retry_idx, len(RETRY_WAIT_TIMES)-1)]
                     logger.warning(
-                        f"Rate limit hit. Waiting {wait_time}s before retry {retry+1}/{MAX_RETRIES}")
+                        f"Rate limit hit. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
 
                     if progress_callback:
                         progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
-                                          f"Rate limit hit. Waiting {wait_time}s before retry {retry+1}/{MAX_RETRIES}")
+                                          f"Rate limit hit. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
 
                     time.sleep(wait_time)
-                elif retry < MAX_RETRIES - 1:
-                    # For other errors, wait a bit less
-                    wait_time = 5 * (retry + 1)
+                elif retry_idx < MAX_RETRIES - 1:
+                    # For other errors, use same wait times
+                    wait_time = RETRY_WAIT_TIMES[min(
+                        retry_idx, len(RETRY_WAIT_TIMES)-1)]
                     logger.warning(
-                        f"Error fetching batch: {str(e)}. Retrying in {wait_time}s ({retry+1}/{MAX_RETRIES})")
+                        f"Error fetching batch: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
 
                     if progress_callback:
                         progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
-                                          f"Error: {str(e)}. Retrying in {wait_time}s ({retry+1}/{MAX_RETRIES})")
+                                          f"Error: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
 
                     time.sleep(wait_time)
                 else:
@@ -247,9 +269,9 @@ def fetch_bulk_data(tickers, period="1y", interval="1wk", batch_size=DEFAULT_BAT
                         progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
                                           f"Failed to fetch batch after {MAX_RETRIES} retries")
 
-        # Add a small random delay between batches to avoid rate limiting
+        # Add a small delay between batches to avoid rate limiting
         if batch_idx < (total_tickers + batch_size - 1) // batch_size - 1:
-            time.sleep(random.uniform(1.0, 3.0))
+            time.sleep(3.0)  # 3 second delay between batches
 
     return result
 

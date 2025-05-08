@@ -12,6 +12,8 @@ from services.yahoo_finance_service import fetch_ticker_info as yahoo_fetch_info
 from services.yahoo_finance_service import fetch_history as yahoo_fetch_history
 from services.alpha_vantage_service import fetch_ticker_info as alpha_fetch_info
 from services.alpha_vantage_service import fetch_history as alpha_fetch_history
+# Import MockStock from alpha_vantage_service
+from services.alpha_vantage_service import MockStock
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -36,6 +38,10 @@ class StockDataManager:
         self.data_freshness_hours = 14  # Data older than this will be refreshed
         self.debug_mode = db_storage.debug_mode
 
+        # Get preferred data source from session state (default to yahoo)
+        self.primary_source = st.session_state.get(
+            'preferred_data_source', 'yahoo')
+
     def fetch_ticker_info(self, ticker):
         """
         Fetch company information with caching and fallback.
@@ -56,12 +62,6 @@ class StockDataManager:
                 if datetime.now() - last_updated < timedelta(hours=self.data_freshness_hours):
                     logger.info(f"Using cached fundamental data for {ticker}")
 
-                    # Create a compatible stock and info objects
-                    class MockStock:
-                        def __init__(self, ticker, info):
-                            self.ticker = ticker
-                            self.info = info
-
                     # Convert DB data to info dictionary
                     info = {
                         'symbol': ticker,
@@ -73,40 +73,46 @@ class StockDataManager:
                         'marketCap': db_data['market_cap'],
                         'revenueGrowth': db_data['revenue_growth'],
                         'profitMargins': db_data['profit_margin'],
-                        'dividendYield': db_data['dividend_yield']
+                        'dividendYield': db_data['dividend_yield'],
+                        'source': db_data['source']
                     }
 
+                    # Create a mock stock object
                     stock = MockStock(ticker, info)
                     return stock, info
 
-            # If we don't have fresh data, try to fetch from Yahoo Finance
-            try:
-                stock, info = yahoo_fetch_info(ticker)
-                # Save to database for future use
-                self._save_fundamentals_to_db(ticker, info, source='yahoo')
-                return stock, info
-            except Exception as yahoo_error:
-                logger.warning(
-                    f"Yahoo Finance failed for {ticker}: {str(yahoo_error)}")
+            # Determine which data source to try first based on configuration
+            primary_fetch = yahoo_fetch_info if self.primary_source == 'yahoo' else alpha_fetch_info
+            fallback_fetch = alpha_fetch_info if self.primary_source == 'yahoo' else yahoo_fetch_info
 
-                # Fall back to Alpha Vantage
+            primary_source_name = self.primary_source
+            fallback_source_name = 'alphavantage' if self.primary_source == 'yahoo' else 'yahoo'
+
+            # Try the primary source first
+            try:
+                stock, info = primary_fetch(ticker)
+                # Save to database for future use
+                self._save_fundamentals_to_db(
+                    ticker, info, source=primary_source_name)
+                return stock, info
+            except Exception as primary_error:
+                logger.warning(
+                    f"{primary_source_name.capitalize()} failed for {ticker}: {str(primary_error)}")
+
+                # Fall back to secondary source
                 try:
-                    stock, info = alpha_fetch_info(ticker)
+                    stock, info = fallback_fetch(ticker)
                     # Save to database for future use
                     self._save_fundamentals_to_db(
-                        ticker, info, source='alphavantage')
+                        ticker, info, source=fallback_source_name)
                     return stock, info
-                except Exception as alpha_error:
+                except Exception as secondary_error:
                     # If both services fail and we have old data, use that
                     if db_data is not None:
                         logger.warning(
                             f"Using stale data for {ticker} as both services failed")
 
-                        class MockStock:
-                            def __init__(self, ticker, info):
-                                self.ticker = ticker
-                                self.info = info
-
+                        # Convert DB data to info dictionary
                         info = {
                             'symbol': ticker,
                             'shortName': db_data['company_name'],
@@ -117,15 +123,17 @@ class StockDataManager:
                             'marketCap': db_data['market_cap'],
                             'revenueGrowth': db_data['revenue_growth'],
                             'profitMargins': db_data['profit_margin'],
-                            'dividendYield': db_data['dividend_yield']
+                            'dividendYield': db_data['dividend_yield'],
+                            'source': db_data['source']
                         }
 
+                        # Create a mock stock object
                         stock = MockStock(ticker, info)
                         return stock, info
                     else:
                         # No data available at all
                         raise RuntimeError(
-                            f"Failed to fetch data for {ticker} from all services: {str(yahoo_error)}, {str(alpha_error)}")
+                            f"Failed to fetch data for {ticker} from all services: {str(primary_error)}, {str(secondary_error)}")
 
         except Exception as e:
             logger.error(f"Error in fetch_ticker_info for {ticker}: {str(e)}")
@@ -166,27 +174,33 @@ class StockDataManager:
                     # Drop the last_updated and source columns for compatibility
                     return db_data.drop(['last_updated', 'source'], axis=1, errors='ignore')
 
-            # If we don't have fresh data, try to fetch from Yahoo Finance
+            # Determine which data source to try first based on configuration
+            primary_fetch = yahoo_fetch_history if self.primary_source == 'yahoo' else alpha_fetch_history
+            fallback_fetch = alpha_fetch_history if self.primary_source == 'yahoo' else yahoo_fetch_history
+
+            primary_source_name = self.primary_source
+            fallback_source_name = 'alphavantage' if self.primary_source == 'yahoo' else 'yahoo'
+
+            # Try the primary source first
             try:
-                hist = yahoo_fetch_history(
-                    ticker, period=period, interval=interval)
+                hist = primary_fetch(ticker, period=period, interval=interval)
                 # Save to database for future use
                 self._save_history_to_db(
-                    symbol, hist, interval, source='yahoo')
+                    symbol, hist, interval, source=primary_source_name)
                 return hist
-            except Exception as yahoo_error:
+            except Exception as primary_error:
                 logger.warning(
-                    f"Yahoo Finance history failed for {symbol}: {str(yahoo_error)}")
+                    f"{primary_source_name.capitalize()} history failed for {symbol}: {str(primary_error)}")
 
-                # Fall back to Alpha Vantage
+                # Fall back to secondary source
                 try:
-                    hist = alpha_fetch_history(
+                    hist = fallback_fetch(
                         symbol, period=period, interval=interval)
                     # Save to database for future use
                     self._save_history_to_db(
-                        symbol, hist, interval, source='alphavantage')
+                        symbol, hist, interval, source=fallback_source_name)
                     return hist
-                except Exception as alpha_error:
+                except Exception as secondary_error:
                     # If both services fail and we have old data, use that
                     if db_data is not None and not db_data.empty:
                         logger.warning(
@@ -195,7 +209,7 @@ class StockDataManager:
                     else:
                         # No data available at all
                         raise RuntimeError(
-                            f"Failed to fetch history for {symbol} from all services: {str(yahoo_error)}, {str(alpha_error)}")
+                            f"Failed to fetch history for {symbol} from all services: {str(primary_error)}, {str(secondary_error)}")
 
         except Exception as e:
             logger.error(f"Error in fetch_history for {ticker}: {str(e)}")
@@ -290,11 +304,15 @@ class StockDataManager:
             # Make a copy to avoid modifying the original
             df = hist_df.copy()
 
-            # Add metadata columns
-            df['ticker'] = ticker
-            df['timeframe'] = interval
-            df['last_updated'] = datetime.now().isoformat()
-            df['source'] = source
+            # Add metadata columns if not already present
+            if 'ticker' not in df.columns:
+                df['ticker'] = ticker
+            if 'timeframe' not in df.columns:
+                df['timeframe'] = interval
+            if 'last_updated' not in df.columns:
+                df['last_updated'] = datetime.now().isoformat()
+            if 'source' not in df.columns:
+                df['source'] = source
 
             # Reset index to get date as column
             df = df.reset_index()

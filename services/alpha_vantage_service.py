@@ -17,6 +17,16 @@ CACHE_TTL = 7200  # 2 hour cache for API responses
 MAX_RETRIES = 2   # Max retries for API calls
 DEFAULT_DELAY = 15  # Default delay between API calls in seconds
 
+# Define MockStock at the module level so it can be pickled
+
+
+class MockStock:
+    """Mock stock object to provide compatibility with yfinance Ticker objects"""
+
+    def __init__(self, ticker, info):
+        self.ticker = ticker
+        self.info = info
+
 
 def get_api_key():
     """Get Alpha Vantage API key from session state"""
@@ -71,15 +81,11 @@ def fetch_ticker_info(ticker):
                 "forwardPE": float(data.get("ForwardPE", 0)) if data.get("ForwardPE") else None,
                 "dividendYield": float(data.get("DividendYield", 0)) if data.get("DividendYield") else None,
                 "profitMargins": float(data.get("ProfitMargin", 0)) if data.get("ProfitMargin") else None,
-                "revenueGrowth": float(data.get("QuarterlyRevenueGrowthYOY", 0)) if data.get("QuarterlyRevenueGrowthYOY") else None
+                "revenueGrowth": float(data.get("QuarterlyRevenueGrowthYOY", 0)) if data.get("QuarterlyRevenueGrowthYOY") else None,
+                "source": "alphavantage"  # Add source tracking
             }
 
-            # Create a mock stock object for compatibility
-            class MockStock:
-                def __init__(self, ticker, info):
-                    self.ticker = ticker
-                    self.info = info
-
+            # Create a mock stock object using the module-level class
             stock = MockStock(ticker, info)
             return stock, info
 
@@ -115,6 +121,10 @@ def fetch_history(ticker, period="1y", interval="1wk"):
 
     logger.info(
         f"Alpha Vantage: Fetching history for {ticker} ({period}, {interval})")
+
+    # Convert ticker object to symbol if needed
+    if hasattr(ticker, 'ticker'):
+        ticker = ticker.ticker
 
     # Convert Yahoo Finance interval format to Alpha Vantage format
     alpha_interval = {
@@ -196,6 +206,9 @@ def fetch_history(ticker, period="1y", interval="1wk"):
                 df = df.iloc[:365]
             elif period == "2y":
                 df = df.iloc[:730]
+
+            # Add source column for tracking
+            df['source'] = 'alphavantage'
 
             return df
 
