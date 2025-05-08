@@ -21,6 +21,7 @@ from tabs.storage_settings_tab import render_storage_settings_tab
 # Import file storage
 from storage.file_storage import FileStorage
 
+
 def create_streamlit_app():
     st.set_page_config(
         page_title="Värde & Momentum Aktiestrategi",
@@ -123,6 +124,7 @@ def create_streamlit_app():
             st.session_state.get('active_watchlist_index', 0)
         )
 
+
 def handle_url_params():
     """Handle URL parameters like shared watchlist links"""
     query_params = st.query_params
@@ -136,6 +138,7 @@ def handle_url_params():
             st.success("Importerad watchlist från delad länk!")
             # Clear the parameter after import to avoid reimporting on refresh
             st.query_params.clear()
+
 
 def render_storage_status():
     """
@@ -175,6 +178,7 @@ def render_storage_status():
 
     except Exception as e:
         st.sidebar.error(f"Error rendering storage status: {e}")
+
 
 def render_sidebar():
     """Render the sidebar content"""
@@ -259,6 +263,7 @@ def render_sidebar():
             except Exception as e:
                 st.error(f"Error restoring backup: {str(e)}")
 
+
 def handle_tab_state():
     """
     Handles tab state persistence using query parameters and session state for backup.
@@ -268,22 +273,22 @@ def handle_tab_state():
     tab_names = ["Watchlist & Batch Analysis", "Enskild Aktieanalys",
                  "Stock Scanner", "Multi-Timeframe Analysis",
                  "Storage Settings"]
-    
+
     # Define tab index for Stock Scanner
     SCANNER_TAB_INDEX = 2
-    
+
     # Initialize session state for tab tracking if not exists
     if 'current_tab_index' not in st.session_state:
         st.session_state.current_tab_index = 0
-    
+
     # Add a flag to protect against tab switching during initial widget interaction
     if 'widget_interaction_started' not in st.session_state:
         st.session_state.widget_interaction_started = False
-    
+
     # Check if a tab is specified in the URL query parameters
     query_params = st.query_params
     tab_param = query_params.get("tab", [None])[0]
-    
+
     # Special handling to prevent unintended tab switches
     if 'prevent_tab_change' in st.session_state and st.session_state.prevent_tab_change:
         # If we're in the scanner tab and this is our first widget interaction,
@@ -292,7 +297,7 @@ def handle_tab_state():
             tab_index = SCANNER_TAB_INDEX
             st.session_state.widget_interaction_started = True
             return tab_index
-    
+
     # Normal processing for tab state
     if tab_param is not None:
         try:
@@ -307,7 +312,7 @@ def handle_tab_state():
     # Make sure the tab index is valid
     if tab_index < 0 or tab_index >= len(tab_names):
         tab_index = 0
-    
+
     # Store current tab index in session state for persistence
     st.session_state.current_tab_index = tab_index
 
@@ -318,6 +323,6 @@ def handle_tab_state():
     # Return the current tab index to use when creating tabs
     return tab_index
 
+
 if __name__ == "__main__":
     create_streamlit_app()
-

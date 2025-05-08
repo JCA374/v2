@@ -7,7 +7,7 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-
+from tabs.api_settings_component import render_api_settings_section
 
 def render_storage_settings_tab():
     """Render the storage settings tab for managing database configuration."""
@@ -16,6 +16,9 @@ def render_storage_settings_tab():
     # Access database storage from session state
     db_storage = st.session_state.get('db_storage')
     watchlist_manager = st.session_state.get('watchlist_manager')
+
+    # Add API settings section
+    render_api_settings_section()
 
     if not db_storage:
         st.error(

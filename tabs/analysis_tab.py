@@ -83,6 +83,13 @@ def render_analysis_results(analysis, strategy, watchlist_manager):
     st.markdown(
         f"<h3 style='color:{signal_color}'>Signal: {signal_text}</h3>", unsafe_allow_html=True)
 
+    # Add a small data source indicator
+    source = analysis.get("data_source", "Unknown")
+    if source:
+        source_color = "green" if source == "local" else "blue" if source == "yahoo" else "orange" if source == "alphavantage" else "gray"
+        st.markdown(
+            f"<small>Data source: <span style='color:{source_color}'>{source}</span></small>", unsafe_allow_html=True)
+
     # Show watchlist options - updated to allow adding to any watchlist
     st.subheader("Lägg till i watchlist")
 

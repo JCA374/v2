@@ -1,4 +1,4 @@
-# strategy.py (updated with Yahoo Finance service integration)
+# strategy.py (modified)
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,13 +9,8 @@ import os
 from datetime import datetime, timedelta
 import logging
 
-# Import the Yahoo Finance service instead of yfinance directly
-from services.yahoo_finance_service import (
-    fetch_ticker_info,
-    fetch_history,
-    fetch_company_earnings,
-    extract_fundamental_data
-)
+# Import the Stock Data Manager
+from services.stock_data_manager import StockDataManager
 
 
 class ValueMomentumStrategy:
@@ -33,19 +28,35 @@ class ValueMomentumStrategy:
         self.near_high_threshold = 0.98  # Within 2% of 52-week high
         self.pe_max = 30    # Maximum P/E ratio considered reasonable
 
+        # Initialize data manager when needed
+        self.data_manager = None
+
         # Set up logging
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger('ValueMomentumStrategy')
 
+    def _ensure_data_manager(self):
+        """Ensure the data manager is initialized"""
+        if self.data_manager is None:
+            # Access the database storage from session state
+            db_storage = st.session_state.get('db_storage')
+            if db_storage is None:
+                raise RuntimeError(
+                    "Database storage not initialized in session state")
+            self.data_manager = StockDataManager(db_storage)
+        return self.data_manager
+
     def _fetch_info(self, ticker):
-        """Fetches ticker info using the Yahoo Finance service."""
-        return fetch_ticker_info(ticker)
+        """Fetches ticker info using the data manager"""
+        data_manager = self._ensure_data_manager()
+        return data_manager.fetch_ticker_info(ticker)
 
     def _fetch_history(self, stock, period="1y", interval="1wk"):
-        """Fetches history using the Yahoo Finance service."""
-        return fetch_history(stock, period=period, interval=interval)
-
+        """Fetches history using the data manager"""
+        data_manager = self._ensure_data_manager()
+        return data_manager.fetch_history(stock, period=period, interval=interval)
+    
     # Improved RSI calculation from the new code
     def calculate_rsi(self, prices, window=14):
         """Calculate Relative Strength Index without using pandas_ta"""
@@ -120,6 +131,13 @@ class ValueMomentumStrategy:
         Returns:
         - Dictionary with analysis results
         """
+
+
+        # Track data source
+        data_source = "local"  # Default to local if it's coming from the database
+        if 'source' in info and isinstance(info['source'], str):
+            data_source = info['source'].lower()
+
         result = {"ticker": ticker, "error": None, "error_message": None}
         try:
             # Get stock data using our centralized service
@@ -191,6 +209,8 @@ class ValueMomentumStrategy:
             result.update(tech_analysis)
             result.update(fund_analysis)
 
+            result["data_source"] = data_source
+            
             return result
 
         except Exception as e:

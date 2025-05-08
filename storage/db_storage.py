@@ -34,57 +34,63 @@ class DatabaseStorage:
         app_dir = home_dir / ".value_momentum_app"
         os.makedirs(app_dir, exist_ok=True)
         return str(app_dir / "watchlists.db")
-    
+
     def _ensure_db_exists(self) -> None:
         """Create the database and tables if they don't exist."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                
-                # Create tables if they don't exist
+
+                # Existing tables code...
+
+                # Add new tables for stock data
                 cursor.execute('''
-                CREATE TABLE IF NOT EXISTS watchlists (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-                ''')
-                
-                cursor.execute('''
-                CREATE TABLE IF NOT EXISTS stocks (
-                    watchlist_id TEXT,
+                CREATE TABLE IF NOT EXISTS stock_price_history (
                     ticker TEXT,
-                    added_at TEXT NOT NULL,
-                    PRIMARY KEY (watchlist_id, ticker),
-                    FOREIGN KEY (watchlist_id) REFERENCES watchlists(id)
+                    date TEXT,
+                    timeframe TEXT,
+                    open REAL,
+                    high REAL,
+                    low REAL,
+                    close REAL,
+                    volume INTEGER,
+                    adjusted_close REAL,
+                    last_updated TIMESTAMP,
+                    source TEXT,
+                    PRIMARY KEY (ticker, date, timeframe)
                 )
                 ''')
-                
+
                 cursor.execute('''
-                CREATE TABLE IF NOT EXISTS app_settings (
-                    key TEXT PRIMARY KEY,
-                    value TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
+                CREATE TABLE IF NOT EXISTS stock_fundamentals (
+                    ticker TEXT PRIMARY KEY,
+                    company_name TEXT,
+                    sector TEXT,
+                    industry TEXT,
+                    pe_ratio REAL,
+                    market_cap REAL,
+                    revenue_growth REAL,
+                    profit_margin REAL,
+                    dividend_yield REAL,
+                    last_updated TIMESTAMP,
+                    source TEXT
                 )
                 ''')
-                
-                # Insert or update active_watchlist_id setting if it doesn't exist
-                cursor.execute('''
-                INSERT OR IGNORE INTO app_settings (key, value, updated_at)
-                VALUES (?, ?, ?)
-                ''', ('active_watchlist_id', '', datetime.datetime.now().isoformat()))
-                
+
+                # Create index for faster queries
+                cursor.execute(
+                    'CREATE INDEX IF NOT EXISTS idx_ticker_timeframe ON stock_price_history(ticker, timeframe)')
+
                 conn.commit()
-                
+
                 if self.debug_mode:
-                    st.success(f"Database initialized at {self.db_path}")
-                    
+                    st.success("Created stock data tables")
+
         except sqlite3.Error as e:
             if self.debug_mode:
                 st.error(f"Database initialization error: {str(e)}")
             raise
-    
+
     def save_watchlists(self, watchlists: List[Dict[str, Any]], active_index: int = 0) -> bool:
         """
         Save watchlists to the database.
