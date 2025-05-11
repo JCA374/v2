@@ -13,6 +13,8 @@ from services.alpha_vantage_service import fetch_ticker_info as alpha_fetch_info
 from services.alpha_vantage_service import fetch_history as alpha_fetch_history
 # Import MockStock from alpha_vantage_service
 from services.alpha_vantage_service import MockStock
+# Import ticker mapping service
+from services.ticker_mapping_service import TickerMappingService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -42,23 +44,34 @@ class StockDataManager:
         self.primary_source = st.session_state.get(
             'preferred_data_source', 'yahoo')
 
+        # Initialize ticker mapping service
+        self.ticker_mapper = TickerMappingService(db_storage)
+
     def fetch_ticker_info(self, ticker):
         """
         Fetch company information with caching and fallback.
         
         Args:
-            ticker (str): The ticker symbol
+            ticker (str): The ticker symbol (in any format)
             
         Returns:
             tuple: (stock object, info dictionary)
         """
         try:
+            # First, identify which format the ticker is in
+            original_ticker = ticker
+
+            # Convert ticker to string if it's an object with 'ticker' attribute
+            if hasattr(ticker, 'ticker'):
+                ticker = ticker.ticker
+
             # First check if we have fresh data in the database
             db_data = self._load_fundamentals_from_db(ticker)
 
             if db_data is not None:
                 # Check if data is fresh enough
-                last_updated = datetime.fromisoformat(db_data['last_updated'].replace('Z', '+00:00') if db_data['last_updated'].endswith('Z') else db_data['last_updated'])
+                last_updated = datetime.fromisoformat(db_data['last_updated'].replace(
+                    'Z', '+00:00') if db_data['last_updated'].endswith('Z') else db_data['last_updated'])
                 if datetime.now() - last_updated < timedelta(hours=self.data_freshness_hours):
                     logger.info(f"Using cached fundamental data for {ticker}")
 
@@ -88,20 +101,32 @@ class StockDataManager:
             primary_source_name = self.primary_source
             fallback_source_name = 'alphavantage' if self.primary_source == 'yahoo' else 'yahoo'
 
+            # Convert ticker to the format needed for the primary source
+            primary_ticker = self.ticker_mapper.get_ticker(
+                ticker, source=primary_source_name)
+
             # Try the primary source first
             try:
-                stock, info = primary_fetch(ticker)
+                stock, info = primary_fetch(primary_ticker)
+                # Store the original ticker for reference
+                info['original_ticker'] = original_ticker
                 # Save to database for future use
                 self._save_fundamentals_to_db(
                     ticker, info, source=primary_source_name)
                 return stock, info
             except Exception as primary_error:
                 logger.warning(
-                    f"{primary_source_name.capitalize()} failed for {ticker}: {str(primary_error)}")
+                    f"{primary_source_name.capitalize()} failed for {primary_ticker}: {str(primary_error)}")
+
+                # Convert ticker to the format needed for the fallback source
+                fallback_ticker = self.ticker_mapper.get_ticker(
+                    ticker, source=fallback_source_name)
 
                 # Fall back to secondary source
                 try:
-                    stock, info = fallback_fetch(ticker)
+                    stock, info = fallback_fetch(fallback_ticker)
+                    # Store the original ticker for reference
+                    info['original_ticker'] = original_ticker
                     # Save to database for future use
                     self._save_fundamentals_to_db(
                         ticker, info, source=fallback_source_name)
@@ -124,7 +149,8 @@ class StockDataManager:
                             'revenueGrowth': db_data['revenue_growth'],
                             'profitMargins': db_data['profit_margin'],
                             'dividendYield': db_data['dividend_yield'],
-                            'source': db_data['source']
+                            'source': db_data['source'],
+                            'original_ticker': original_ticker
                         }
 
                         # Create a mock stock object
@@ -145,7 +171,7 @@ class StockDataManager:
         Fetch historical price data with caching and fallback.
         
         Args:
-            ticker: Stock ticker object or symbol string
+            ticker: Stock ticker object or symbol string (in any format)
             period: Time period to fetch
             interval: Data interval
             
@@ -154,6 +180,7 @@ class StockDataManager:
         """
         try:
             # Convert ticker object to symbol if needed
+            original_ticker = ticker
             if hasattr(ticker, 'ticker'):
                 symbol = ticker.ticker
             else:
@@ -176,21 +203,30 @@ class StockDataManager:
             primary_source_name = self.primary_source
             fallback_source_name = 'alphavantage' if self.primary_source == 'yahoo' else 'yahoo'
 
+            # Convert ticker to the format needed for the primary source
+            primary_ticker = self.ticker_mapper.get_ticker(
+                symbol, source=primary_source_name)
+
             # Try the primary source first
             try:
-                hist = primary_fetch(ticker, period=period, interval=interval)
+                hist = primary_fetch(
+                    primary_ticker, period=period, interval=interval)
                 # Save to database for future use
                 self._save_history_to_db(
                     symbol, hist, interval, source=primary_source_name)
                 return hist
             except Exception as primary_error:
                 logger.warning(
-                    f"{primary_source_name.capitalize()} history failed for {symbol}: {str(primary_error)}")
+                    f"{primary_source_name.capitalize()} history failed for {primary_ticker}: {str(primary_error)}")
+
+                # Convert ticker to the format needed for the fallback source
+                fallback_ticker = self.ticker_mapper.get_ticker(
+                    symbol, source=fallback_source_name)
 
                 # Fall back to secondary source
                 try:
                     hist = fallback_fetch(
-                        symbol, period=period, interval=interval)
+                        fallback_ticker, period=period, interval=interval)
                     # Save to database for future use
                     self._save_history_to_db(
                         symbol, hist, interval, source=fallback_source_name)
@@ -236,10 +272,12 @@ class StockDataManager:
             }
 
             # Use Supabase to save the data
-            success = self.db_storage.save_fundamental_data(ticker, data, source)
-            
+            success = self.db_storage.save_fundamental_data(
+                ticker, data, source)
+
             if success and self.debug_mode:
-                logger.info(f"Saved fundamental data for {ticker} from {source}")
+                logger.info(
+                    f"Saved fundamental data for {ticker} from {source}")
 
             return success
         except Exception as e:
@@ -268,10 +306,10 @@ class StockDataManager:
 
             # Set the interval attribute on the dataframe
             hist_df.attrs['interval'] = interval
-                
+
             # Use Supabase to save the data
             success = self.db_storage.save_price_data(ticker, hist_df, source)
-            
+
             if success and self.debug_mode:
                 logger.info(f"Saved history data for {ticker} from {source}")
 
