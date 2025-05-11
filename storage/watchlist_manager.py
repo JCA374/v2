@@ -1,31 +1,26 @@
 """
 Watchlist manager for storing and managing stock watchlists.
-This file provides the MultiWatchlistManager class which is used in the original application.
-It now works with both cookie storage and database storage for a smooth transition.
+This file provides the MultiWatchlistManager class which is used in the application.
+It now works with Supabase database storage.
 """
 import uuid
 import base64
 import json
 from datetime import datetime
 import streamlit as st
-
-# storage/watchlist_manager.py - Updated version
-"""
-Watchlist manager for storing and managing stock watchlists.
-This file provides the MultiWatchlistManager class which uses database storage.
-"""
-
+import pandas as pd
+from typing import List, Dict, Any, Optional, Union
 
 class MultiWatchlistManager:
     """
-    Manages multiple watchlists for a user, stored in a database.
-    Provides functionality for creating, renaming, deleting, and sharing watchlists.
+    Manages multiple watchlists for a user, stored in Supabase.
+    Provides functionality for creating, renaming, deleting watchlists.
     """
 
     def __init__(self):
-        """Initialize the watchlist manager with database storage"""
+        """Initialize the watchlist manager with Supabase storage"""
         # Check if we have database storage available
-        self.db_storage = st.session_state.get('db_storage', None)
+        self.supabase_db = st.session_state.get('supabase_db', None)
         self.debug_mode = False  # For debugging
         self.storage_status = None  # Track storage status
 
@@ -33,18 +28,18 @@ class MultiWatchlistManager:
         if 'watchlists' not in st.session_state:
             watchlists_loaded = False
 
-            # Try to load from database
-            if self.db_storage:
-                db_data = self.db_storage.load_watchlists()
+            # Try to load from Supabase
+            if self.supabase_db:
+                db_data = self._load_from_supabase()
                 if db_data and "watchlists" in db_data:
                     st.session_state.watchlists = db_data["watchlists"]
                     st.session_state.active_watchlist_index = db_data.get(
                         "active_index", 0)
-                    self.storage_status = "loaded from database"
+                    self.storage_status = "loaded from Supabase"
                     watchlists_loaded = True
                     if self.debug_mode:
                         st.write(
-                            f"Loaded {len(st.session_state.watchlists)} watchlists from database")
+                            f"Loaded {len(st.session_state.watchlists)} watchlists from Supabase")
 
             # Create default structure if nothing was loaded
             if not watchlists_loaded:
@@ -73,8 +68,56 @@ class MultiWatchlistManager:
         elif st.session_state.get('active_watchlist_index', 0) >= len(st.session_state.get('watchlists', [])):
             st.session_state.active_watchlist_index = 0
 
+    def _load_from_supabase(self) -> Optional[Dict[str, Any]]:
+        """Load watchlists from Supabase"""
+        if not self.supabase_db or not self.supabase_db.supabase:
+            return None
+            
+        try:
+            # Query watchlists table
+            response = self.supabase_db.supabase.table("watchlists").select("*").execute()
+            
+            if not response.data:
+                return None
+                
+            # Get watchlists
+            watchlists = []
+            for wl in response.data:
+                # Get stocks for this watchlist
+                stocks_response = self.supabase_db.supabase.table("stocks").select("ticker").eq("watchlist_id", wl['id']).execute()
+                stocks = [item['ticker'] for item in stocks_response.data]
+                
+                watchlist = {
+                    'id': wl['id'],
+                    'name': wl['name'],
+                    'stocks': stocks
+                }
+                watchlists.append(watchlist)
+                
+            # Get active watchlist
+            settings_response = self.supabase_db.supabase.table("app_settings").select("*").eq("key", "active_watchlist_id").execute()
+            active_id = settings_response.data[0]['value'] if settings_response.data else ""
+            
+            # Find index of active watchlist
+            active_index = 0
+            for i, wl in enumerate(watchlists):
+                if wl['id'] == active_id:
+                    active_index = i
+                    break
+                    
+            result = {
+                'watchlists': watchlists,
+                'active_index': active_index
+            }
+            
+            return result
+        except Exception as e:
+            if self.debug_mode:
+                st.error(f"Error loading from Supabase: {str(e)}")
+            return None
+
     def _save_to_storage(self):
-        """Save watchlists to database storage"""
+        """Save watchlists to Supabase storage"""
         # Ensure we have valid watchlist data before saving
         if not isinstance(st.session_state.get('watchlists', []), list):
             st.session_state.watchlists = [{
@@ -86,24 +129,108 @@ class MultiWatchlistManager:
 
         success = False
 
-        # Save to database
-        if self.db_storage:
+        # Save to Supabase
+        if self.supabase_db and self.supabase_db.supabase:
             try:
-                success = self.db_storage.save_watchlists(
+                success = self._save_to_supabase(
                     st.session_state.watchlists,
                     st.session_state.active_watchlist_index
                 )
                 if success:
-                    self.storage_status = "saved to database"
+                    self.storage_status = "saved to Supabase"
                     if self.debug_mode:
                         st.write(
-                            f"Saved {len(st.session_state.watchlists)} watchlists to database")
+                            f"Saved {len(st.session_state.watchlists)} watchlists to Supabase")
             except Exception as e:
                 if self.debug_mode:
-                    st.error(f"Error saving to database: {str(e)}")
+                    st.error(f"Error saving to Supabase: {str(e)}")
                 success = False
 
         return success
+        
+    def _save_to_supabase(self, watchlists, active_index=0) -> bool:
+        """Save watchlists to Supabase"""
+        if not self.supabase_db or not self.supabase_db.supabase:
+            return False
+            
+        try:
+            supabase = self.supabase_db.supabase
+            now = datetime.now().isoformat()
+            
+            # Get existing watchlists to track deletions
+            response = supabase.table("watchlists").select("id").execute()
+            existing_ids = {row['id'] for row in response.data}
+            current_ids = {wl['id'] for wl in watchlists}
+            
+            # Delete watchlists that no longer exist
+            for wl_id in existing_ids - current_ids:
+                # First delete associated stocks
+                supabase.table("stocks").delete().eq("watchlist_id", wl_id).execute()
+                # Then delete the watchlist
+                supabase.table("watchlists").delete().eq("id", wl_id).execute()
+            
+            # Update active watchlist ID
+            if len(watchlists) > active_index:
+                active_id = watchlists[active_index]['id']
+                # Check if settings exist
+                settings_response = supabase.table("app_settings").select("*").eq("key", "active_watchlist_id").execute()
+                
+                if settings_response.data:
+                    # Update existing setting
+                    supabase.table("app_settings").update({
+                        "value": active_id,
+                        "updated_at": now
+                    }).eq("key", "active_watchlist_id").execute()
+                else:
+                    # Insert new setting
+                    supabase.table("app_settings").insert({
+                        "key": "active_watchlist_id",
+                        "value": active_id,
+                        "updated_at": now
+                    }).execute()
+            
+            # Insert or update watchlists
+            for watchlist in watchlists:
+                # Check if watchlist exists
+                wl_response = supabase.table("watchlists").select("*").eq("id", watchlist['id']).execute()
+                
+                if wl_response.data:
+                    # Update existing watchlist
+                    supabase.table("watchlists").update({
+                        "name": watchlist['name'],
+                        "updated_at": now
+                    }).eq("id", watchlist['id']).execute()
+                else:
+                    # Insert new watchlist
+                    supabase.table("watchlists").insert({
+                        "id": watchlist['id'],
+                        "name": watchlist['name'],
+                        "created_at": now,
+                        "updated_at": now
+                    }).execute()
+                
+                # Get existing stocks for this watchlist
+                stocks_response = supabase.table("stocks").select("ticker").eq("watchlist_id", watchlist['id']).execute()
+                existing_stocks = {row['ticker'] for row in stocks_response.data}
+                current_stocks = set(watchlist['stocks'])
+                
+                # Delete stocks that are no longer in the watchlist
+                for ticker in existing_stocks - current_stocks:
+                    supabase.table("stocks").delete().eq("watchlist_id", watchlist['id']).eq("ticker", ticker).execute()
+                
+                # Add new stocks
+                for ticker in current_stocks - existing_stocks:
+                    supabase.table("stocks").insert({
+                        "watchlist_id": watchlist['id'],
+                        "ticker": ticker,
+                        "added_at": now
+                    }).execute()
+            
+            return True
+        except Exception as e:
+            if self.debug_mode:
+                st.error(f"Error in _save_to_supabase: {str(e)}")
+            return False
 
     def _import_legacy_watchlist(self):
         """Import legacy watchlist.json if it exists"""
@@ -139,29 +266,20 @@ class MultiWatchlistManager:
             st.write(
                 f"Stocks: {', '.join(watchlist['stocks']) if watchlist['stocks'] else 'None'}")
 
-        # Check what's in different storage systems
-        if self.db_storage:
-            db_data = self.db_storage.load_watchlists()
-            if db_data and "watchlists" in db_data:
-                st.write("### Database Data")
-                st.write(
-                    f"Number of watchlists in database: {len(db_data['watchlists'])}")
-                st.write(
-                    f"Active index in database: {db_data.get('active_index', 'Not set')}")
-            else:
-                st.write("No watchlist data found in database!")
-
-        # Also check what's saved in cookies
-        cookie_data = self.cookie_manager.load_cookie()
-        if cookie_data and "watchlists" in cookie_data:
-            st.write("### Cookie Data")
-            st.write(
-                f"Number of watchlists in cookie: {len(cookie_data['watchlists'])}")
-            st.write(
-                f"Active index in cookie: {cookie_data.get('active_index', 'Not set')}")
-            st.write(f"Timestamp: {cookie_data.get('timestamp', 'Not set')}")
-        else:
-            st.write("No watchlist data found in cookies!")
+        # Check what's in Supabase
+        if self.supabase_db and self.supabase_db.supabase:
+            try:
+                db_data = self._load_from_supabase()
+                if db_data and "watchlists" in db_data:
+                    st.write("### Supabase Data")
+                    st.write(
+                        f"Number of watchlists in Supabase: {len(db_data['watchlists'])}")
+                    st.write(
+                        f"Active index in Supabase: {db_data.get('active_index', 'Not set')}")
+                else:
+                    st.write("No watchlist data found in Supabase!")
+            except Exception as e:
+                st.write(f"Error accessing Supabase: {str(e)}")
 
     def get_all_watchlists(self):
         """Get all watchlists"""
@@ -473,3 +591,40 @@ class MultiWatchlistManager:
     def get_storage_status(self):
         """Return the current storage status"""
         return self.storage_status
+        
+    def get_database_info(self):
+        """Get information about the database for diagnostics."""
+        try:
+            if not self.supabase_db or not self.supabase_db.supabase:
+                return {"error": "Supabase not connected"}
+                
+            # Get watchlist count
+            wl_response = self.supabase_db.supabase.table("watchlists").select("id").execute()
+            watchlist_count = len(wl_response.data) if wl_response.data else 0
+            
+            # Get stock count
+            stock_response = self.supabase_db.supabase.table("stocks").select("watchlist_id").execute()
+            stock_count = len(stock_response.data) if stock_response.data else 0
+            
+            # Get count of watchlists that have stocks
+            populated_watchlists = len(set([item['watchlist_id'] for item in stock_response.data])) if stock_response.data else 0
+            
+            # Get connection info
+            supabase_url = st.secrets.get("supabase_url", "")
+            
+            # Format the URL for display (remove https:// and trailing slash)
+            display_url = supabase_url.replace("https://", "").replace("http://", "").rstrip("/")
+            
+            return {
+                "path": display_url,
+                "size_bytes": "N/A",  # Cloud database doesn't report size in bytes
+                "size_formatted": "Cloud DB",
+                "watchlist_count": watchlist_count,
+                "stock_count": stock_count,
+                "populated_watchlists": populated_watchlists,
+                "last_modified": datetime.now().isoformat()
+            }
+        except Exception as e:
+            if self.debug_mode:
+                st.error(f"Error getting database info: {str(e)}")
+            return {"error": str(e)}

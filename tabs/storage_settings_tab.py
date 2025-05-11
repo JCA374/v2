@@ -1,84 +1,58 @@
 """
-Storage Settings tab for configuring and managing database storage.
+Storage Settings tab for configuring and managing Supabase database storage.
 """
 import streamlit as st
 import os
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 from tabs.api_settings_component import render_api_settings_section
+from storage.supabase_stock_db import render_database_status, show_supabase_setup
 
 def render_storage_settings_tab():
-    """Render the storage settings tab for managing database configuration."""
+    """Render the storage settings tab for managing Supabase database configuration."""
     st.header("Storage Settings")
 
     # Access database storage from session state
-    db_storage = st.session_state.get('db_storage')
+    supabase_db = st.session_state.get('supabase_db')
     watchlist_manager = st.session_state.get('watchlist_manager')
 
-    # Add API settings section
+    # Add API settings section (for Alpha Vantage and other APIs)
     render_api_settings_section()
 
-    if not db_storage:
+    if not supabase_db or not supabase_db.supabase:
         st.error(
-            "Database storage is not initialized. Please restart the application.")
+            "Supabase database is not connected. Please check your configuration.")
+        show_supabase_setup()
         return
 
     # Database information and status
     st.subheader("Database Status")
-    db_info = db_storage.get_database_info()
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Watchlists", db_info.get("watchlist_count", 0))
-    with col2:
-        st.metric("Total Stocks", db_info.get("stock_count", 0))
-    with col3:
-        st.metric("Database Size", db_info.get("size_formatted", "0 KB"))
-
-    st.info(f"Database location: {db_info.get('path', 'Unknown')}")
+    render_database_status()
 
     # Database settings
-    st.subheader("Storage Location")
+    st.subheader("Supabase Configuration")
 
-    new_location = st.text_input(
-        "Custom database location (leave empty for default)",
-        value="",
-        help="Specify a custom location for the database file. Leave empty to use the default location."
-    )
+    # Show current configuration
+    supabase_url = st.secrets.get("supabase_url", "")
+    # Mask the beginning of the URL for security
+    masked_url = supabase_url
+    if supabase_url.startswith("https://"):
+        project_id = supabase_url.split("https://")[1].split(".")[0]
+        masked_url = f"https://{'*' * (len(project_id)-4)}{project_id[-4:]}.supabase.co"
 
-    if st.button("Change Database Location"):
-        if new_location:
-            try:
-                # Create directory if it doesn't exist
-                new_dir = os.path.dirname(new_location)
-                if new_dir and not os.path.exists(new_dir):
-                    os.makedirs(new_dir, exist_ok=True)
-
-                # Copy current database to new location
-                if os.path.exists(db_info.get('path', '')):
-                    shutil.copy2(db_info.get('path', ''), new_location)
-                    # Update database path in session state
-                    st.session_state['db_path'] = new_location
-                    st.success(f"Database moved to {new_location}")
-                    st.info(
-                        "Please restart the application for changes to take effect.")
-                else:
-                    # Create a new database at the specified location
-                    from storage.db_storage import DatabaseStorage
-                    new_db = DatabaseStorage(new_location)
-                    # Save current watchlists to the new database
-                    if 'watchlists' in st.session_state:
-                        new_db.save_watchlists(
-                            st.session_state.watchlists,
-                            st.session_state.get('active_watchlist_index', 0)
-                        )
-                    st.success(f"New database created at {new_location}")
-                    st.info(
-                        "Please restart the application for changes to take effect.")
-            except Exception as e:
-                st.error(f"Error changing database location: {str(e)}")
+    st.info(f"Current Supabase project: {masked_url}")
+    st.markdown("""
+    To change your Supabase configuration:
+    
+    1. Edit your `.streamlit/secrets.toml` file with the following:
+    ```toml
+    supabase_url = "https://your-project-id.supabase.co"
+    supabase_key = "your-supabase-anon-key"
+    ```
+    
+    2. Restart the Streamlit app
+    """)
 
     # Backup and restore section
     st.subheader("Backup & Restore")
@@ -90,7 +64,7 @@ def render_storage_settings_tab():
         backup_filename = f"watchlists_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         # Generate backup JSON for download
-        data = db_storage.load_watchlists()
+        data = watchlist_manager._load_from_supabase()
         if data:
             data['export_date'] = datetime.now().isoformat()
             json_data = json.dumps(data, indent=2)
@@ -149,7 +123,7 @@ def render_storage_settings_tab():
                     if st.button("Restore Watchlists"):
                         if restore_mode == "Replace all watchlists":
                             # Replace existing watchlists
-                            success = db_storage.save_watchlists(
+                            success = watchlist_manager._save_to_supabase(
                                 json_data['watchlists'],
                                 json_data.get('active_index', 0)
                             )
@@ -164,7 +138,7 @@ def render_storage_settings_tab():
                                 st.error("Failed to restore watchlists")
                         else:
                             # Merge with existing watchlists
-                            current_data = db_storage.load_watchlists()
+                            current_data = watchlist_manager._load_from_supabase()
                             if not current_data:
                                 current_data = {
                                     "watchlists": [], "active_index": 0}
@@ -192,7 +166,7 @@ def render_storage_settings_tab():
                             # Convert back to list and save
                             merged_watchlists = list(
                                 existing_wl_by_id.values())
-                            success = db_storage.save_watchlists(
+                            success = watchlist_manager._save_to_supabase(
                                 merged_watchlists,
                                 current_data['active_index']
                             )
@@ -213,43 +187,70 @@ def render_storage_settings_tab():
         st.warning("These actions can result in data loss. Use with caution.")
 
         # Reset database
-        if st.button("Reset Database", help="Delete all watchlists and start fresh"):
+        if st.button("Reset Watchlists", help="Delete all watchlists and start fresh"):
             if st.session_state.get('watchlists'):
-                if db_storage.save_watchlists([], 0):
+                if watchlist_manager._save_to_supabase([], 0):
                     st.session_state.watchlists = []
                     st.session_state.active_watchlist_index = 0
-                    st.success("Database reset successfully!")
+                    st.success("Watchlists reset successfully!")
                     st.info("Please reload the app to see the changes.")
                 else:
-                    st.error("Failed to reset database")
+                    st.error("Failed to reset watchlists")
+
+        # Reset price data
+        if st.button("Clear Price Data", help="Delete all stored stock price history"):
+            try:
+                if supabase_db.supabase:
+                    supabase_db.supabase.table("stock_prices").delete().execute()
+                    st.success("Price data cleared successfully!")
+                else:
+                    st.error("Supabase connection not available")
+            except Exception as e:
+                st.error(f"Error clearing price data: {str(e)}")
+                
+        # Reset fundamental data
+        if st.button("Clear Fundamental Data", help="Delete all stored stock fundamentals"):
+            try:
+                if supabase_db.supabase:
+                    supabase_db.supabase.table("stock_fundamentals").delete().execute()
+                    st.success("Fundamental data cleared successfully!")
+                else:
+                    st.error("Supabase connection not available")
+            except Exception as e:
+                st.error(f"Error clearing fundamental data: {str(e)}")
 
         # Enable/disable debug mode
         debug_mode = st.checkbox(
             "Debug Mode",
-            value=db_storage.debug_mode,
+            value=getattr(watchlist_manager, 'debug_mode', False),
             help="Show detailed logging for database operations"
         )
 
-        if debug_mode != db_storage.debug_mode:
-            db_storage.debug_mode = debug_mode
+        if debug_mode != getattr(watchlist_manager, 'debug_mode', False):
+            watchlist_manager.debug_mode = debug_mode
+            if supabase_db:
+                supabase_db.debug_mode = debug_mode
             st.success(f"Debug mode {'enabled' if debug_mode else 'disabled'}")
 
-    # Display tips for mobile/cross-device usage
-    st.subheader("Cross-Device Usage")
+    # Display information about cross-device usage
+    st.subheader("Cloud Database Benefits")
     st.markdown("""
-    ### How to access your watchlists on multiple devices:
+    ### Advantages of using Supabase cloud database:
     
-    1. **Using the same computer**: Your watchlists are stored in a local database that persists between sessions.
+    1. **Access from anywhere**: Your watchlists are stored in the cloud and accessible from any device.
     
-    2. **Accessing from another computer**:
-       - Create a backup file using the "Download Backup File" button above
-       - Transfer the backup file to the other computer
-       - On the other computer, use "Restore from Backup" to import your watchlists
+    2. **No local storage limitations**: Data is stored in Supabase's PostgreSQL database, not on your local device.
     
-    3. **Accessing from mobile devices**:
-       - For advanced users: Set up your database in a cloud-synced folder (e.g., Dropbox, Google Drive)
-       - Use the "Change Database Location" option to point to the synced folder
-       - Ensure the Streamlit app is installed on all devices that need access
+    3. **Automatic backups**: Supabase includes automated backups of your data.
     
-    *Note: A future version may include cloud synchronization for easier multi-device access.*
+    4. **Data sharing**: Easily share watchlists between team members by using the same Supabase project.
+    
+    5. **Scalability**: As your data grows, the cloud database can handle it without performance issues.
+    
+    ### For extra safety, we recommend:
+    
+    - Periodically download backups using the "Download Backup File" button above
+    - Store backups in a secure location like a cloud drive or external storage
+    
+    *For technical support or database issues, please contact the application administrator.*
     """)

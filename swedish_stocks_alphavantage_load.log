@@ -1,0 +1,54 @@
+2025-05-11 19:11:51,779 - INFO - Starting Swedish stocks data load using Alpha Vantage API
+2025-05-11 19:11:51,800 - INFO - Connecting to Supabase
+2025-05-11 19:11:53,072 - INFO - Connected to Supabase successfully
+2025-05-11 19:11:53,072 - INFO - Processing ERIC-B.ST
+2025-05-11 19:11:53,072 - INFO - Fetching company overview for ERIC-B.ST
+2025-05-11 19:11:53,327 - ERROR - Failed to get company overview for ERIC-B.ST: {}
+2025-05-11 19:11:53,327 - INFO - Fetching daily prices for ERIC-B.ST
+2025-05-11 19:11:53,497 - ERROR - Failed to get daily prices for ERIC-B.ST: {}
+2025-05-11 19:11:53,497 - INFO - Fetching weekly prices for ERIC-B.ST
+2025-05-11 19:11:53,961 - ERROR - Failed to get weekly prices for ERIC-B.ST: {}
+2025-05-11 19:11:53,962 - INFO - Fetching monthly prices for ERIC-B.ST
+2025-05-11 19:11:54,404 - ERROR - Failed to get monthly prices for ERIC-B.ST: {}
+2025-05-11 19:11:54,405 - INFO - Completed processing ERIC-B.ST
+2025-05-11 19:11:54,405 - INFO - Waiting 2 seconds between stocks...
+2025-05-11 19:11:56,407 - INFO - Processing VOLV-B.ST
+2025-05-11 19:11:56,407 - INFO - Fetching company overview for VOLV-B.ST
+2025-05-11 19:11:56,585 - ERROR - Failed to get company overview for VOLV-B.ST: {}
+2025-05-11 19:11:56,586 - INFO - Waiting 65 seconds to respect API rate limits...
+2025-05-11 19:13:01,587 - INFO - Fetching daily prices for VOLV-B.ST
+2025-05-11 19:13:01,746 - ERROR - Failed to get daily prices for VOLV-B.ST: {}
+2025-05-11 19:13:01,746 - INFO - Fetching weekly prices for VOLV-B.ST
+2025-05-11 19:13:02,208 - ERROR - Failed to get weekly prices for VOLV-B.ST: {}
+2025-05-11 19:13:02,208 - INFO - Fetching monthly prices for VOLV-B.ST
+2025-05-11 19:13:02,394 - ERROR - Failed to get monthly prices for VOLV-B.ST: {}
+2025-05-11 19:13:02,394 - INFO - Completed processing VOLV-B.ST
+2025-05-11 19:13:02,394 - INFO - Waiting 2 seconds between stocks...
+2025-05-11 19:13:04,398 - INFO - Processing SAND.ST
+2025-05-11 19:13:04,398 - INFO - Fetching company overview for SAND.ST
+2025-05-11 19:13:04,559 - ERROR - Failed to get company overview for SAND.ST: {}
+2025-05-11 19:13:04,559 - INFO - Fetching daily prices for SAND.ST
+2025-05-11 19:13:04,708 - ERROR - Failed to get daily prices for SAND.ST: {}
+2025-05-11 19:13:04,708 - INFO - Waiting 65 seconds to respect API rate limits...
+2025-05-11 19:15:07,300 - INFO - Starting stock data load using Alpha Vantage API
+2025-05-11 19:15:07,302 - INFO - Connecting to Supabase
+2025-05-11 19:15:09,216 - INFO - Connected to Supabase successfully
+2025-05-11 19:15:22,706 - INFO - Loading Swedish stocks
+2025-05-11 19:15:22,706 - INFO - Processing ERIC-B.ST (Alpha Vantage: ERIC-B.STO)
+2025-05-11 19:15:22,706 - INFO - Fetching company overview for ERIC-B.STO
+2025-05-11 19:15:22,922 - ERROR - Failed to get company overview for ERIC-B.STO: {}
+2025-05-11 19:15:22,922 - INFO - Using backup data for ERIC-B.ST
+2025-05-11 19:15:23,469 - INFO - Saved fundamental data for ERIC-B.ST
+2025-05-11 19:15:23,469 - INFO - Fetching daily prices for ERIC-B.STO
+2025-05-11 19:15:23,620 - ERROR - Failed to get daily prices for ERIC-B.STO: {'Information': 'Thank you for using Alpha Vantage! This is a premium endpoint. You may subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly unlock all premium endpoints'}
+2025-05-11 19:15:23,620 - INFO - Fetching weekly prices for ERIC-B.STO
+2025-05-11 19:15:24,018 - ERROR - Failed to get weekly prices for ERIC-B.STO: {'Error Message': 'Invalid API call. Please retry or visit the documentation (https://www.alphavantage.co/documentation/) for TIME_SERIES_WEEKLY_ADJUSTED.'}
+2025-05-11 19:15:24,018 - INFO - Fetching monthly prices for ERIC-B.STO
+2025-05-11 19:15:24,221 - ERROR - Failed to get monthly prices for ERIC-B.STO: {'Error Message': 'Invalid API call. Please retry or visit the documentation (https://www.alphavantage.co/documentation/) for TIME_SERIES_MONTHLY_ADJUSTED.'}
+2025-05-11 19:15:24,222 - INFO - Completed processing ERIC-B.ST
+2025-05-11 19:15:24,222 - INFO - Processing VOLV-B.ST (Alpha Vantage: VOLV-B.STO)
+2025-05-11 19:15:24,222 - INFO - Fetching company overview for VOLV-B.STO
+2025-05-11 19:15:24,424 - ERROR - Failed to get company overview for VOLV-B.STO: {}
+2025-05-11 19:15:24,426 - INFO - Using backup data for VOLV-B.ST
+2025-05-11 19:15:24,540 - INFO - Saved fundamental data for VOLV-B.ST
+2025-05-11 19:15:24,540 - INFO - Waiting 63.2 seconds to respect API rate limits...

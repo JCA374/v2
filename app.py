@@ -2,7 +2,7 @@
 import streamlit as st
 from strategy import ValueMomentumStrategy
 from storage.watchlist_manager import MultiWatchlistManager
-from storage.db_storage import DatabaseStorage  # Import the new database storage
+from storage.supabase_stock_db import SupabaseStockDB  # Import Supabase storage
 from helpers import create_results_table, get_index_constituents
 from datetime import datetime
 import json
@@ -40,34 +40,15 @@ def create_streamlit_app():
 
     st.title("Värde & Momentum Aktiestrategi")
 
-    # Initialize database storage if it doesn't exist
-    if 'db_storage' not in st.session_state:
-        # Use custom path from session state if available, otherwise use default
-        db_path = st.session_state.get('db_path', None)
-        st.session_state.db_storage = DatabaseStorage(db_path)
+    # Initialize Supabase database connection if it doesn't exist
+    if 'supabase_db' not in st.session_state:
+        st.session_state.supabase_db = SupabaseStockDB()
         # Enable debug mode initially to diagnose issues
-        st.session_state.db_storage.debug_mode = True
+        st.session_state.supabase_db.debug_mode = True
 
     # Initialize shared state objects if they don't exist
     if 'strategy' not in st.session_state:
         st.session_state.strategy = ValueMomentumStrategy()
-
-    # Load watchlists from database if they're not in session state
-    if 'watchlists' not in st.session_state:
-        db_data = st.session_state.db_storage.load_watchlists()
-        if db_data and 'watchlists' in db_data:
-            st.session_state.watchlists = db_data['watchlists']
-            st.session_state.active_watchlist_index = db_data.get(
-                'active_index', 0)
-            st.success("Watchlists loaded from database")
-        else:
-            # Default empty watchlist if nothing in database
-            st.session_state.watchlists = [{
-                "id": str(uuid.uuid4()),
-                "name": "Min Watchlist",
-                "stocks": []
-            }]
-            st.session_state.active_watchlist_index = 0
 
     # Initialize watchlist manager
     if 'watchlist_manager' not in st.session_state:
@@ -117,13 +98,6 @@ def create_streamlit_app():
     # Render sidebar
     render_sidebar()
 
-    # Save any changes to the database when app state changes
-    if 'watchlists' in st.session_state:
-        st.session_state.db_storage.save_watchlists(
-            st.session_state.watchlists,
-            st.session_state.get('active_watchlist_index', 0)
-        )
-
 
 def handle_url_params():
     """Handle URL parameters like shared watchlist links"""
@@ -143,38 +117,34 @@ def handle_url_params():
 def render_storage_status():
     """
     Render the storage status section in the Streamlit sidebar.
-    This function displays information about the current storage or data management state.
+    Shows information about the current Supabase database connection.
     """
     import streamlit as st
-    import os
 
     st.sidebar.header("Storage Status")
 
     try:
-        # Example implementations - adjust based on your specific use case
-
-        # Check data directory
-        data_dir = './data'  # Adjust path as needed
-        if os.path.exists(data_dir):
-            files = os.listdir(data_dir)
-            st.sidebar.write(f"Data files: {len(files)}")
-
-            # Optional: Show file names or additional details
-            if files:
-                st.sidebar.write("Files:")
-                for file in files:
-                    st.sidebar.text(f"- {file}")
+        # Display Supabase connection status
+        if 'supabase_db' in st.session_state and st.session_state.supabase_db.supabase:
+            st.sidebar.success("✅ Connected to Supabase")
+            
+            # Show basic connection info
+            supabase_url = st.secrets.get("supabase_url", "")
+            display_url = supabase_url.replace("https://", "").replace("http://", "").rstrip("/")
+            st.sidebar.info(f"Database: {display_url}")
+            
+            # Try to get some stats from the database
+            try:
+                # Get number of stocks with price data
+                price_response = st.session_state.supabase_db.supabase.table("stock_prices").select("ticker").execute()
+                if price_response.data:
+                    unique_tickers = len(set(row['ticker'] for row in price_response.data))
+                    st.sidebar.metric("Stocks with Price Data", unique_tickers)
+            except Exception as e:
+                st.sidebar.warning(f"Could not retrieve stats: {e}")
         else:
-            st.sidebar.warning("Data directory not found")
-
-        # Optional: Check storage space
-        try:
-            total, used, free = shutil.disk_usage(data_dir)
-            st.sidebar.write(f"Total storage: {total // (2**30)} GB")
-            st.sidebar.write(f"Used storage: {used // (2**30)} GB")
-            st.sidebar.write(f"Free storage: {free // (2**30)} GB")
-        except Exception as disk_error:
-            st.sidebar.warning(f"Could not retrieve disk usage: {disk_error}")
+            st.sidebar.warning("⚠️ Not connected to Supabase database")
+            st.sidebar.info("Check your secrets.toml file configuration")
 
     except Exception as e:
         st.sidebar.error(f"Error rendering storage status: {e}")
@@ -197,13 +167,11 @@ def render_sidebar():
         render_storage_status()
 
     # Add database status indicator in sidebar
-    if 'db_storage' in st.session_state:
-        db_info = st.session_state.db_storage.get_database_info()
+    if 'supabase_db' in st.session_state and 'watchlist_manager' in st.session_state:
+        db_info = st.session_state.watchlist_manager.get_database_info()
         with st.sidebar.expander("Database Status", expanded=False):
-            st.info(
-                f"Database: {os.path.basename(db_info.get('path', 'Unknown'))}")
-            st.write(f"Location: {db_info.get('path', 'Unknown')}")
-            st.write(f"Size: {db_info.get('size_formatted', '0 KB')}")
+            st.info(f"Database: {db_info.get('path', 'Unknown')}")
+            st.write(f"Type: {db_info.get('size_formatted', 'Cloud DB')}")
             st.write(f"Watchlists: {db_info.get('watchlist_count', 0)}")
             st.write(f"Total stocks: {db_info.get('stock_count', 0)}")
 
@@ -217,7 +185,7 @@ def render_sidebar():
 
     # Quick backup option in sidebar
     with st.sidebar.expander("Quick Backup", expanded=False):
-        if 'watchlists' in st.session_state and 'db_storage' in st.session_state:
+        if 'watchlists' in st.session_state and 'watchlist_manager' in st.session_state:
             # Generate backup JSON for download
             data = {
                 "watchlists": st.session_state.watchlists,
@@ -247,15 +215,12 @@ def render_sidebar():
             try:
                 data = json.loads(uploaded_file.getvalue().decode())
                 if "watchlists" in data:
-                    # Save to database
-                    st.session_state.db_storage.save_watchlists(
-                        data["watchlists"],
-                        data.get("active_index", 0)
-                    )
                     # Update session state
                     st.session_state.watchlists = data["watchlists"]
                     st.session_state.active_watchlist_index = data.get(
                         "active_index", 0)
+                    # Save to database
+                    st.session_state.watchlist_manager._save_to_storage()
                     st.success("Watchlists restored successfully!")
                     st.button("Reload App", on_click=lambda: st.rerun())
                 else:
