@@ -7,3 +7,4 @@ plotly==6.0.1
 pandas-ta==0.3.14b0
 python-dateutil==2.9.0.post0
 pytz==2025.2
+supabase==1.0.3
