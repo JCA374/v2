@@ -14,329 +14,117 @@ logger = logging.getLogger('yahoo_finance_service')
 
 # Constants
 CACHE_TTL = 7200  # 2 hour cache
-MAX_RETRIES = 3  # Maximum number of retries for API failures
-RETRY_WAIT_TIMES = [5, 10, 15]  # Seconds to wait for each retry attempt
-DEFAULT_BATCH_SIZE = 25  # Default batch size for bulk requests
-
-# Mock stock class for compatibility with Alpha Vantage service
-
-
-class MockStock:
-    """Mock stock object to provide compatibility with Alpha Vantage service"""
-
-    def __init__(self, ticker, info):
-        self.ticker = ticker
-        self.info = info
-
 
 @st.cache_data(ttl=CACHE_TTL)
-def fetch_ticker_info(ticker):
+def fetch_history(ticker_symbol, period="1y", interval="1wk"):
     """
-    Fetch basic information for a single ticker.
+    Fetch historical price data for a ticker symbol.
     
     Args:
-        ticker (str): The ticker symbol
-        
-    Returns:
-        tuple: (stock object, info dictionary) or raises exception
-    """
-    logger.info(f"Yahoo Finance: Fetching info for {ticker}")
-
-    for retry_idx in range(MAX_RETRIES):
-        try:
-            stock = yf.Ticker(ticker)
-            info = stock.info
-
-            if not isinstance(info, dict):
-                raise RuntimeError("No basic info returned")
-
-            # Add source information
-            info['source'] = 'yahoo'
-
-            return stock, info
-
-        except Exception as e:
-            if "rate" in str(e).lower() or "limit" in str(e).lower():
-                # Use specific wait times rather than exponential backoff
-                wait_time = RETRY_WAIT_TIMES[min(
-                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
-                logger.warning(
-                    f"Rate limit hit fetching {ticker}. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
-                time.sleep(wait_time)
-            elif retry_idx < MAX_RETRIES - 1:
-                # For other errors, use same wait times
-                wait_time = RETRY_WAIT_TIMES[min(
-                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
-                logger.warning(
-                    f"Error fetching {ticker}: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
-                time.sleep(wait_time)
-            else:
-                # Last retry failed
-                logger.error(
-                    f"Failed to fetch info for {ticker} after {MAX_RETRIES} retries: {str(e)}")
-                raise RuntimeError(
-                    f"Failed to fetch info for {ticker}: {str(e)}")
-
-    # This should never be reached due to the raise in the loop
-    raise RuntimeError(
-        f"Failed to fetch info for {ticker} after {MAX_RETRIES} retries")
-
-
-@st.cache_data(ttl=CACHE_TTL)
-def fetch_history(ticker, period="1y", interval="1wk", auto_adjust=True, actions=False):
-    """
-    Fetch historical price data for a single ticker.
-    
-    Args:
-        ticker (str): The ticker symbol
+        ticker_symbol (str): The stock ticker symbol
         period (str): Time period to fetch (e.g., "1y", "3mo", "5y")
         interval (str): Data interval (e.g., "1d", "1wk")
-        auto_adjust (bool): Whether to adjust prices automatically
-        actions (bool): Whether to include dividends and splits
         
     Returns:
-        DataFrame: Historical price data or raises exception
+        DataFrame: Historical price data
     """
-    logger.info(
-        f"Yahoo Finance: Fetching history for {ticker} ({period}, {interval})")
-
-    for retry_idx in range(MAX_RETRIES):
-        try:
-            # If we have a stock object, use it directly
-            if isinstance(ticker, yf.Ticker):
-                stock = ticker
-                ticker_symbol = stock.ticker
-            else:
-                stock = yf.Ticker(ticker)
-                ticker_symbol = ticker
-
-            hist = stock.history(
-                period=period, interval=interval, auto_adjust=auto_adjust, actions=actions)
-
-            if hist is None or hist.empty:
-                raise RuntimeError(
-                    f"No historical data available for {ticker_symbol}")
-
-            # Add source column
-            hist['source'] = 'yahoo'
-
-            return hist
-
-        except Exception as e:
-            if "rate" in str(e).lower() or "limit" in str(e).lower():
-                # Use specific wait times rather than exponential backoff
-                wait_time = RETRY_WAIT_TIMES[min(
-                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
-                logger.warning(
-                    f"Rate limit hit fetching history for {ticker_symbol}. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
-                time.sleep(wait_time)
-            elif retry_idx < MAX_RETRIES - 1:
-                # For other errors, use same wait times
-                wait_time = RETRY_WAIT_TIMES[min(
-                    retry_idx, len(RETRY_WAIT_TIMES)-1)]
-                logger.warning(
-                    f"Error fetching history for {ticker_symbol}: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
-                time.sleep(wait_time)
-            else:
-                # Last retry failed
-                logger.error(
-                    f"Failed to fetch history for {ticker_symbol} after {MAX_RETRIES} retries: {str(e)}")
-                raise RuntimeError(
-                    f"Failed to fetch history for {ticker_symbol}: {str(e)}")
-
-    # This should never be reached due to the raise in the loop
-    raise RuntimeError(
-        f"Failed to fetch history for {ticker_symbol} after {MAX_RETRIES} retries")
-
+    logger.info(f"Yahoo Finance: Fetching history for {ticker_symbol} ({period}, {interval})")
+    
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        df = ticker.history(period=period, interval=interval)
+        
+        if df.empty:
+            logger.warning(f"No data returned for {ticker_symbol}")
+            return pd.DataFrame()
+            
+        # Add source column
+        df['source'] = 'yahoo'
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error fetching data for {ticker_symbol}: {str(e)}")
+        return pd.DataFrame()
 
 @st.cache_data(ttl=CACHE_TTL)
-def fetch_bulk_data(tickers, period="1y", interval="1wk", batch_size=DEFAULT_BATCH_SIZE,
-                    auto_adjust=True, group_by='ticker', progress_callback=None):
+def fetch_ticker_info(ticker_symbol):
     """
-    Fetch data for multiple tickers with intelligent batching and retry logic.
+    Fetch basic information for a ticker symbol.
     
     Args:
-        tickers (list): List of ticker symbols or (original_id, ticker_symbol) tuples
+        ticker_symbol (str): The stock ticker symbol
+        
+    Returns:
+        dict: Stock information dictionary
+    """
+    logger.info(f"Yahoo Finance: Fetching info for {ticker_symbol}")
+    
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        info = ticker.info
+        
+        if not isinstance(info, dict):
+            logger.warning(f"No info returned for {ticker_symbol}")
+            return {}
+            
+        # Add source information
+        info['source'] = 'yahoo'
+        return info
+        
+    except Exception as e:
+        logger.error(f"Error fetching info for {ticker_symbol}: {str(e)}")
+        return {}
+
+@st.cache_data(ttl=CACHE_TTL)
+def fetch_bulk_data(ticker_symbols, period="1y", interval="1wk"):
+    """
+    Fetch data for multiple ticker symbols at once.
+    
+    Args:
+        ticker_symbols (list): List of ticker symbols
         period (str): Time period to fetch (e.g., "1y", "3mo", "5y")
         interval (str): Data interval (e.g., "1d", "1wk")
-        batch_size (int): Number of tickers to fetch in each batch
-        auto_adjust (bool): Whether to adjust prices automatically
-        group_by (str): How to group the data ('ticker' or 'column')
-        progress_callback (callable): Function to call with progress updates
         
     Returns:
         dict: Dictionary mapping ticker symbols to their historical data
     """
-    result = {}
-    total_tickers = len(tickers)
-
-    # Process tickers to ensure consistent format
-    processed_tickers = []
-    for ticker in tickers:
-        if isinstance(ticker, (list, tuple)):
-            processed_tickers.append((ticker[0], ticker[1]))
-        else:
-            processed_tickers.append((ticker, ticker))
-
-    # Process in batches to avoid rate limits
-    for batch_idx, batch_start in enumerate(range(0, total_tickers, batch_size)):
-        # Check if process should be stopped (if callback returns False)
-        if progress_callback and not progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
-                                                       f"Processing batch {batch_idx+1}/{(total_tickers + batch_size - 1) // batch_size}"):
-            logger.info("Bulk data fetch stopped by user")
-            break
-
-        batch_end = min(batch_start + batch_size, total_tickers)
-        batch = processed_tickers[batch_start:batch_end]
-
-        # Extract just the ticker symbols for the API call
-        batch_symbols = [t[1] for t in batch]
-
-        logger.info(
-            f"Fetching batch {batch_idx+1}/{(total_tickers + batch_size - 1) // batch_size} ({len(batch_symbols)} tickers)")
-
-        # Try to fetch data with retries
-        for retry_idx in range(MAX_RETRIES):
-            try:
-                data = yf.download(
-                    tickers=batch_symbols,
-                    period=period,
-                    interval=interval,
-                    group_by=group_by,
-                    auto_adjust=auto_adjust,
-                    progress=False
-                )
-
-                # Process the results
-                if isinstance(data.columns, pd.MultiIndex):
-                    # Multiple tickers returned
-                    for i, (orig, sym) in enumerate(batch):
-                        if sym in data.columns.levels[0]:
-                            df_sym = data[sym].copy()
-                            if not df_sym.empty:
-                                # Add source info
-                                df_sym['source'] = 'yahoo'
-                                result[orig] = df_sym
-                else:
-                    # Single ticker returned
-                    if len(batch_symbols) == 1 and not data.empty:
+    logger.info(f"Yahoo Finance: Fetching {len(ticker_symbols)} tickers")
+    
+    try:
+        data = yf.download(
+            tickers=ticker_symbols,
+            period=period,
+            interval=interval,
+            group_by='ticker',
+            auto_adjust=True,
+            progress=False
+        )
+        
+        result = {}
+        
+        # Process the results
+        if isinstance(data.columns, pd.MultiIndex):
+            # Multiple tickers returned
+            for symbol in ticker_symbols:
+                if symbol in data.columns.levels[0]:
+                    df_sym = data[symbol].copy()
+                    if not df_sym.empty:
                         # Add source info
-                        data_copy = data.copy()
-                        data_copy['source'] = 'yahoo'
-                        result[batch[0][0]] = data_copy
-
-                # Success! Break the retry loop
-                break
-
-            except Exception as e:
-                error_msg = str(e).lower()
-
-                if "rate" in error_msg or "limit" in error_msg:
-                    # Use specific wait times rather than exponential backoff
-                    wait_time = RETRY_WAIT_TIMES[min(
-                        retry_idx, len(RETRY_WAIT_TIMES)-1)]
-                    logger.warning(
-                        f"Rate limit hit. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
-
-                    if progress_callback:
-                        progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
-                                          f"Rate limit hit. Waiting {wait_time}s before retry {retry_idx+1}/{MAX_RETRIES}")
-
-                    time.sleep(wait_time)
-                elif retry_idx < MAX_RETRIES - 1:
-                    # For other errors, use same wait times
-                    wait_time = RETRY_WAIT_TIMES[min(
-                        retry_idx, len(RETRY_WAIT_TIMES)-1)]
-                    logger.warning(
-                        f"Error fetching batch: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
-
-                    if progress_callback:
-                        progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
-                                          f"Error: {str(e)}. Retrying in {wait_time}s ({retry_idx+1}/{MAX_RETRIES})")
-
-                    time.sleep(wait_time)
-                else:
-                    # Log failures but keep going
-                    logger.error(
-                        f"Failed to fetch batch after {MAX_RETRIES} retries: {str(e)}")
-
-                    # If we have a way to report failures, do so
-                    failed_tickers = [t[0] for t in batch]
-                    if hasattr(st.session_state, 'failed_tickers'):
-                        st.session_state.failed_tickers.extend(failed_tickers)
-
-                    if progress_callback:
-                        progress_callback(batch_idx / ((total_tickers + batch_size - 1) // batch_size),
-                                          f"Failed to fetch batch after {MAX_RETRIES} retries")
-
-        # Add a small delay between batches to avoid rate limiting
-        if batch_idx < (total_tickers + batch_size - 1) // batch_size - 1:
-            time.sleep(3.0)  # 3 second delay between batches
-
-    return result
-
-
-@st.cache_data(ttl=CACHE_TTL)
-def fetch_company_earnings(ticker):
-    """
-    Fetch earnings data for a company.
-    
-    Args:
-        ticker (str or yf.Ticker): The ticker symbol or Ticker object
-        
-    Returns:
-        DataFrame: Earnings data or None if not available
-    """
-    try:
-        # If we have a stock object, use it directly
-        if isinstance(ticker, yf.Ticker):
-            stock = ticker
+                        df_sym['source'] = 'yahoo'
+                        result[symbol] = df_sym
         else:
-            stock = yf.Ticker(ticker)
-
-        earnings = stock.earnings
-
-        if earnings is None or earnings.empty:
-            logger.warning(f"No earnings data available for {ticker}")
-            return None
-
-        return earnings
-
-    except Exception as e:
-        logger.error(f"Error fetching earnings for {ticker}: {str(e)}")
-        return None
-
-
-@st.cache_data(ttl=CACHE_TTL)
-def fetch_sustainability_data(ticker):
-    """
-    Fetch ESG (Environmental, Social, Governance) data for a company.
-    
-    Args:
-        ticker (str or yf.Ticker): The ticker symbol or Ticker object
+            # Single ticker returned
+            if len(ticker_symbols) == 1 and not data.empty:
+                # Add source info
+                data_copy = data.copy()
+                data_copy['source'] = 'yahoo'
+                result[ticker_symbols[0]] = data_copy
+                
+        return result
         
-    Returns:
-        DataFrame: Sustainability data or None if not available
-    """
-    try:
-        # If we have a stock object, use it directly
-        if isinstance(ticker, yf.Ticker):
-            stock = ticker
-        else:
-            stock = yf.Ticker(ticker)
-
-        esg = stock.sustainability
-
-        if esg is None or esg.empty:
-            logger.warning(f"No ESG data available for {ticker}")
-            return None
-
-        return esg
-
     except Exception as e:
-        logger.error(f"Error fetching ESG data for {ticker}: {str(e)}")
-        return None
-
+        logger.error(f"Error fetching bulk data: {str(e)}")
+        return {}
 
 def extract_fundamental_data(info):
     """

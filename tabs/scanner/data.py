@@ -8,7 +8,7 @@ import random
 from datetime import datetime, timedelta
 import csv
 
-# Import the Yahoo Finance service instead of yfinance directly
+# Import the Yahoo Finance service
 from services.yahoo_finance_service import fetch_bulk_data
 
 # Constants

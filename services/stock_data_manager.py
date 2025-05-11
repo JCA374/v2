@@ -15,6 +15,13 @@ from services.alpha_vantage_service import fetch_history as alpha_fetch_history
 # Import MockStock from alpha_vantage_service
 from services.alpha_vantage_service import MockStock
 
+# Create a MockStock class for local usage
+class LocalMockStock:
+    """Local mock stock object to provide compatibility between services"""
+    def __init__(self, ticker, info):
+        self.ticker = ticker
+        self.info = info
+
 # Configure logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -84,7 +91,7 @@ class StockDataManager:
                     }
 
                     # Create a mock stock object
-                    stock = MockStock(ticker, info)
+                    stock = LocalMockStock(ticker, info)
                     return stock, info
 
             # Determine which data source to try first based on user preference
@@ -101,7 +108,13 @@ class StockDataManager:
 
             # Try the primary source first
             try:
-                stock, info = primary_fetch(ticker)
+                if primary_source_name == 'yahoo':
+                    info = primary_fetch(ticker)
+                    # Create a mock stock object
+                    stock = LocalMockStock(ticker, info)
+                else:
+                    stock, info = primary_fetch(ticker)
+
                 # Store the original ticker for reference
                 info['original_ticker'] = original_ticker
                 # Save to database for future use
@@ -114,7 +127,13 @@ class StockDataManager:
 
                 # Fall back to secondary source
                 try:
-                    stock, info = fallback_fetch(ticker)
+                    if fallback_source_name == 'yahoo':
+                        info = fallback_fetch(ticker)
+                        # Create a mock stock object
+                        stock = LocalMockStock(ticker, info)
+                    else:
+                        stock, info = fallback_fetch(ticker)
+
                     # Store the original ticker for reference
                     info['original_ticker'] = original_ticker
                     # Save to database for future use
@@ -144,7 +163,7 @@ class StockDataManager:
                         }
 
                         # Create a mock stock object
-                        stock = MockStock(ticker, info)
+                        stock = LocalMockStock(ticker, info)
                         return stock, info
                     else:
                         # No data available at all

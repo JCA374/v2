@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 
-# Import the Yahoo Finance service instead of using yfinance directly
+# Import the Yahoo Finance service
 from services.yahoo_finance_service import fetch_history
 
 # Define configuration for different timeframes
@@ -59,20 +59,18 @@ DEFAULT_SETTINGS = {
 def fetch_data(symbol: str, period: str, interval: str) -> pd.DataFrame | None:
     """
     Fetches data using the centralized Yahoo Finance service.
-    
+
     Args:
         symbol: The ticker symbol to fetch
         period: Time period to fetch (e.g., "1y", "3mo", "5y")
         interval: Data interval (e.g., "1d", "1wk")
-        
+
     Returns:
         DataFrame: Historical price data or None if there was an error
     """
     try:
         # Use our centralized service to fetch the data
-        # Keep auto_adjust=False as noted in the original implementation
-        df = fetch_history(symbol, period=period,
-                           interval=interval, auto_adjust=False, actions=False)
+        df = fetch_history(symbol, period=period, interval=interval)
 
         if df is None or df.empty:
             st.warning(
