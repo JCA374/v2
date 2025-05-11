@@ -11,10 +11,9 @@ from services.yahoo_finance_service import fetch_ticker_info as yahoo_fetch_info
 from services.yahoo_finance_service import fetch_history as yahoo_fetch_history
 from services.alpha_vantage_service import fetch_ticker_info as alpha_fetch_info
 from services.alpha_vantage_service import fetch_history as alpha_fetch_history
+
 # Import MockStock from alpha_vantage_service
 from services.alpha_vantage_service import MockStock
-# Import ticker mapping service
-from services.ticker_mapping_service import TickerMappingService
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -26,7 +25,6 @@ class StockDataManager:
     """
     Central manager for stock data retrieval and caching.
     Handles service selection, database operations, and data consistency.
-    Uses Supabase for cloud database storage.
     """
 
     def __init__(self, db_storage):
@@ -34,34 +32,29 @@ class StockDataManager:
         Initialize the stock data manager.
         
         Args:
-            db_storage: Instance of SupabaseStockDB class
+            db_storage: Database storage instance (SupabaseStockDB or SQLite)
         """
         self.db_storage = db_storage
         self.data_freshness_hours = 14  # Data older than this will be refreshed
         self.debug_mode = False
 
         # Get preferred data source from session state (default to yahoo)
-        self.primary_source = st.session_state.get(
+        self.preferred_source = st.session_state.get(
             'preferred_data_source', 'yahoo')
-
-        # Initialize ticker mapping service
-        self.ticker_mapper = TickerMappingService(db_storage)
 
     def fetch_ticker_info(self, ticker):
         """
         Fetch company information with caching and fallback.
         
         Args:
-            ticker (str): The ticker symbol (in any format)
+            ticker (str): The ticker symbol
             
         Returns:
             tuple: (stock object, info dictionary)
         """
         try:
-            # First, identify which format the ticker is in
-            original_ticker = ticker
-
             # Convert ticker to string if it's an object with 'ticker' attribute
+            original_ticker = ticker
             if hasattr(ticker, 'ticker'):
                 ticker = ticker.ticker
 
@@ -94,20 +87,21 @@ class StockDataManager:
                     stock = MockStock(ticker, info)
                     return stock, info
 
-            # Determine which data source to try first based on configuration
-            primary_fetch = yahoo_fetch_info if self.primary_source == 'yahoo' else alpha_fetch_info
-            fallback_fetch = alpha_fetch_info if self.primary_source == 'yahoo' else yahoo_fetch_info
-
-            primary_source_name = self.primary_source
-            fallback_source_name = 'alphavantage' if self.primary_source == 'yahoo' else 'yahoo'
-
-            # Convert ticker to the format needed for the primary source
-            primary_ticker = self.ticker_mapper.get_ticker(
-                ticker, source=primary_source_name)
+            # Determine which data source to try first based on user preference
+            if self.preferred_source == 'yahoo':
+                primary_fetch = yahoo_fetch_info
+                fallback_fetch = alpha_fetch_info
+                primary_source_name = 'yahoo'
+                fallback_source_name = 'alphavantage'
+            else:
+                primary_fetch = alpha_fetch_info
+                fallback_fetch = yahoo_fetch_info
+                primary_source_name = 'alphavantage'
+                fallback_source_name = 'yahoo'
 
             # Try the primary source first
             try:
-                stock, info = primary_fetch(primary_ticker)
+                stock, info = primary_fetch(ticker)
                 # Store the original ticker for reference
                 info['original_ticker'] = original_ticker
                 # Save to database for future use
@@ -116,15 +110,11 @@ class StockDataManager:
                 return stock, info
             except Exception as primary_error:
                 logger.warning(
-                    f"{primary_source_name.capitalize()} failed for {primary_ticker}: {str(primary_error)}")
-
-                # Convert ticker to the format needed for the fallback source
-                fallback_ticker = self.ticker_mapper.get_ticker(
-                    ticker, source=fallback_source_name)
+                    f"{primary_source_name.capitalize()} failed for {ticker}: {str(primary_error)}")
 
                 # Fall back to secondary source
                 try:
-                    stock, info = fallback_fetch(fallback_ticker)
+                    stock, info = fallback_fetch(ticker)
                     # Store the original ticker for reference
                     info['original_ticker'] = original_ticker
                     # Save to database for future use
@@ -171,7 +161,7 @@ class StockDataManager:
         Fetch historical price data with caching and fallback.
         
         Args:
-            ticker: Stock ticker object or symbol string (in any format)
+            ticker: Stock ticker object or symbol string
             period: Time period to fetch
             interval: Data interval
             
@@ -190,43 +180,39 @@ class StockDataManager:
             db_data = self._load_history_from_db(symbol, interval, period)
 
             if db_data is not None and not db_data.empty:
-                # Check if data is fresh enough using the database's is_data_fresh method
+                # Check if data is fresh enough (using the database's is_data_fresh method)
                 if self.db_storage.is_data_fresh(symbol, 'price', interval):
                     logger.info(
                         f"Using cached history data for {symbol} ({period}, {interval})")
                     return db_data
 
-            # Determine which data source to try first based on configuration
-            primary_fetch = yahoo_fetch_history if self.primary_source == 'yahoo' else alpha_fetch_history
-            fallback_fetch = alpha_fetch_history if self.primary_source == 'yahoo' else yahoo_fetch_history
-
-            primary_source_name = self.primary_source
-            fallback_source_name = 'alphavantage' if self.primary_source == 'yahoo' else 'yahoo'
-
-            # Convert ticker to the format needed for the primary source
-            primary_ticker = self.ticker_mapper.get_ticker(
-                symbol, source=primary_source_name)
+            # Determine which data source to try first based on user preference
+            if self.preferred_source == 'yahoo':
+                primary_fetch = yahoo_fetch_history
+                fallback_fetch = alpha_fetch_history
+                primary_source_name = 'yahoo'
+                fallback_source_name = 'alphavantage'
+            else:
+                primary_fetch = alpha_fetch_history
+                fallback_fetch = yahoo_fetch_history
+                primary_source_name = 'alphavantage'
+                fallback_source_name = 'yahoo'
 
             # Try the primary source first
             try:
-                hist = primary_fetch(
-                    primary_ticker, period=period, interval=interval)
+                hist = primary_fetch(symbol, period=period, interval=interval)
                 # Save to database for future use
                 self._save_history_to_db(
                     symbol, hist, interval, source=primary_source_name)
                 return hist
             except Exception as primary_error:
                 logger.warning(
-                    f"{primary_source_name.capitalize()} history failed for {primary_ticker}: {str(primary_error)}")
-
-                # Convert ticker to the format needed for the fallback source
-                fallback_ticker = self.ticker_mapper.get_ticker(
-                    symbol, source=fallback_source_name)
+                    f"{primary_source_name.capitalize()} history failed for {symbol}: {str(primary_error)}")
 
                 # Fall back to secondary source
                 try:
                     hist = fallback_fetch(
-                        fallback_ticker, period=period, interval=interval)
+                        symbol, period=period, interval=interval)
                     # Save to database for future use
                     self._save_history_to_db(
                         symbol, hist, interval, source=fallback_source_name)
@@ -248,7 +234,7 @@ class StockDataManager:
             raise
 
     def _save_fundamentals_to_db(self, ticker, info, source='yahoo'):
-        """Save fundamental data to the Supabase database."""
+        """Save fundamental data to the database."""
         try:
             # Extract and standardize data
             market_cap = info.get('marketCap')
@@ -271,7 +257,7 @@ class StockDataManager:
                 'industry': info.get('industry'),
             }
 
-            # Use Supabase to save the data
+            # Save to database
             success = self.db_storage.save_fundamental_data(
                 ticker, data, source)
 
@@ -287,9 +273,8 @@ class StockDataManager:
             return False
 
     def _load_fundamentals_from_db(self, ticker):
-        """Load fundamental data from the Supabase database."""
+        """Load fundamental data from the database."""
         try:
-            # Use Supabase to get the data
             return self.db_storage.get_fundamental_data(ticker)
         except Exception as e:
             logger.error(f"Error loading fundamental data: {str(e)}")
@@ -298,7 +283,7 @@ class StockDataManager:
             return None
 
     def _save_history_to_db(self, ticker, hist_df, interval, source='yahoo'):
-        """Save historical price data to the Supabase database."""
+        """Save historical price data to the database."""
         try:
             if hist_df is None or hist_df.empty:
                 logger.warning(f"No history data to save for {ticker}")
@@ -307,7 +292,7 @@ class StockDataManager:
             # Set the interval attribute on the dataframe
             hist_df.attrs['interval'] = interval
 
-            # Use Supabase to save the data
+            # Save to database
             success = self.db_storage.save_price_data(ticker, hist_df, source)
 
             if success and self.debug_mode:
@@ -321,12 +306,34 @@ class StockDataManager:
             return False
 
     def _load_history_from_db(self, ticker, interval, period):
-        """Load historical price data from the Supabase database."""
+        """Load historical price data from the database."""
         try:
-            # Use Supabase to get the data
             return self.db_storage.get_price_data(ticker, interval, period)
         except Exception as e:
             logger.error(f"Error loading history data: {str(e)}")
             if self.debug_mode:
                 logger.error(traceback.format_exc())
             return None
+
+    def set_debug_mode(self, enabled=True):
+        """Enable or disable debug mode"""
+        self.debug_mode = enabled
+        return self.debug_mode
+
+    def set_preferred_source(self, source):
+        """
+        Set the preferred data source.
+        
+        Args:
+            source: Either 'yahoo' or 'alphavantage'
+        
+        Returns:
+            bool: Success status
+        """
+        if source not in ['yahoo', 'alphavantage']:
+            return False
+
+        self.preferred_source = source
+        # Also update in session state
+        st.session_state.preferred_data_source = source
+        return True

@@ -1,16 +1,14 @@
-"""
-Storage Settings tab for configuring and managing Supabase database storage.
-"""
+# tabs/storage_settings_tab.py
 import streamlit as st
 import os
 import json
 from datetime import datetime
 from pathlib import Path
 from tabs.api_settings_component import render_api_settings_section
-from storage.supabase_stock_db import render_database_status, show_supabase_setup
+
 
 def render_storage_settings_tab():
-    """Render the storage settings tab for managing Supabase database configuration."""
+    """Render the storage settings tab for managing database configuration."""
     st.header("Storage Settings")
 
     # Access database storage from session state
@@ -20,39 +18,77 @@ def render_storage_settings_tab():
     # Add API settings section (for Alpha Vantage and other APIs)
     render_api_settings_section()
 
-    if not supabase_db or not supabase_db.supabase:
-        st.error(
-            "Supabase database is not connected. Please check your configuration.")
-        show_supabase_setup()
-        return
-
     # Database information and status
     st.subheader("Database Status")
-    render_database_status()
 
-    # Database settings
-    st.subheader("Supabase Configuration")
+    if supabase_db and supabase_db.supabase:
+        st.success("✅ Connected to Supabase database")
 
-    # Show current configuration
-    supabase_url = st.secrets.get("supabase_url", "")
-    # Mask the beginning of the URL for security
-    masked_url = supabase_url
-    if supabase_url.startswith("https://"):
-        project_id = supabase_url.split("https://")[1].split(".")[0]
-        masked_url = f"https://{'*' * (len(project_id)-4)}{project_id[-4:]}.supabase.co"
+        # Try to get some stats
+        try:
+            # Price data stats
+            response = supabase_db.supabase.table("stock_prices") \
+                .select("ticker", "last_updated", "timeframe") \
+                .limit(1000) \
+                .execute()
 
-    st.info(f"Current Supabase project: {masked_url}")
-    st.markdown("""
-    To change your Supabase configuration:
-    
-    1. Edit your `.streamlit/secrets.toml` file with the following:
-    ```toml
-    supabase_url = "https://your-project-id.supabase.co"
-    supabase_key = "your-supabase-anon-key"
-    ```
-    
-    2. Restart the Streamlit app
-    """)
+            if response.data:
+                # Get unique tickers and timeframes
+                unique_tickers = len(set(row['ticker']
+                                     for row in response.data))
+                unique_timeframes = len(
+                    set(row['timeframe'] for row in response.data))
+                data_points = len(response.data)
+
+                # Get most recent update time
+                update_times = [row['last_updated']
+                                for row in response.data if row['last_updated']]
+                if update_times:
+                    latest_update = max(update_times)
+                    try:
+                        latest_dt = datetime.fromisoformat(latest_update.replace(
+                            'Z', '+00:00')) if latest_update.endswith('Z') else datetime.fromisoformat(latest_update)
+                        hours_ago = (datetime.now() -
+                                     latest_dt).total_seconds() / 3600
+                    except:
+                        hours_ago = None
+                else:
+                    hours_ago = None
+
+                # Show statistics
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Stocks with Price Data", unique_tickers)
+                    st.metric("Data Points", f"{data_points:,}")
+
+                with col2:
+                    st.metric("Timeframes", unique_timeframes)
+                    if hours_ago is not None:
+                        st.metric("Last Update", f"{hours_ago:.1f} hours ago")
+
+                # Show timeframe breakdown
+                if unique_timeframes > 0:
+                    st.subheader("Data by Timeframe")
+                    timeframe_counts = {}
+                    for row in response.data:
+                        tf = row.get('timeframe', 'unknown')
+                        timeframe_counts[tf] = timeframe_counts.get(tf, 0) + 1
+
+                    # Create simple bar chart
+                    st.bar_chart(timeframe_counts)
+            else:
+                st.info("No price data has been cached yet.")
+        except Exception as e:
+            st.warning(f"Could not retrieve database statistics: {str(e)}")
+    else:
+        st.error("Not connected to Supabase database.")
+        st.info("""
+        To use cloud database storage, you need to set up Supabase credentials in your secrets.toml file:
+        ```
+        supabase_url = "https://your-project-id.supabase.co"
+        supabase_key = "your-supabase-anon-key"
+        ```
+        """)
 
     # Backup and restore section
     st.subheader("Backup & Restore")
@@ -64,7 +100,9 @@ def render_storage_settings_tab():
         backup_filename = f"watchlists_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         # Generate backup JSON for download
-        data = watchlist_manager._load_from_supabase()
+        data = watchlist_manager._load_from_supabase() if hasattr(
+            watchlist_manager, '_load_from_supabase') else None
+
         if data:
             data['export_date'] = datetime.now().isoformat()
             json_data = json.dumps(data, indent=2)
@@ -182,75 +220,79 @@ def render_storage_settings_tab():
             except Exception as e:
                 st.error(f"Error processing backup file: {str(e)}")
 
-    # Advanced settings
-    with st.expander("Advanced Settings", expanded=False):
-        st.warning("These actions can result in data loss. Use with caution.")
+    # Database management section
+    with st.expander("Database Management", expanded=False):
+        st.warning("These actions will modify the database. Use with caution.")
 
-        # Reset database
-        if st.button("Reset Watchlists", help="Delete all watchlists and start fresh"):
-            if st.session_state.get('watchlists'):
-                if watchlist_manager._save_to_supabase([], 0):
-                    st.session_state.watchlists = []
-                    st.session_state.active_watchlist_index = 0
-                    st.success("Watchlists reset successfully!")
-                    st.info("Please reload the app to see the changes.")
-                else:
-                    st.error("Failed to reset watchlists")
+        col1, col2 = st.columns(2)
 
-        # Reset price data
-        if st.button("Clear Price Data", help="Delete all stored stock price history"):
-            try:
-                if supabase_db.supabase:
-                    supabase_db.supabase.table("stock_prices").delete().execute()
-                    st.success("Price data cleared successfully!")
-                else:
-                    st.error("Supabase connection not available")
-            except Exception as e:
-                st.error(f"Error clearing price data: {str(e)}")
-                
-        # Reset fundamental data
-        if st.button("Clear Fundamental Data", help="Delete all stored stock fundamentals"):
-            try:
-                if supabase_db.supabase:
-                    supabase_db.supabase.table("stock_fundamentals").delete().execute()
-                    st.success("Fundamental data cleared successfully!")
-                else:
-                    st.error("Supabase connection not available")
-            except Exception as e:
-                st.error(f"Error clearing fundamental data: {str(e)}")
+        with col1:
+            if st.button("Clear Price Data Cache", help="Delete all stored stock price history"):
+                try:
+                    if supabase_db and supabase_db.supabase:
+                        # Use a confirmation dialog
+                        confirm = st.checkbox("Confirm deletion", value=False)
+                        if confirm:
+                            supabase_db.supabase.table(
+                                "stock_prices").delete().execute()
+                            st.success(
+                                "Price data cache cleared successfully!")
+                except Exception as e:
+                    st.error(f"Error clearing price data: {str(e)}")
 
-        # Enable/disable debug mode
+        with col2:
+            if st.button("Clear Fundamental Data Cache", help="Delete all stored stock fundamentals"):
+                try:
+                    if supabase_db and supabase_db.supabase:
+                        # Use a confirmation dialog
+                        confirm = st.checkbox("Confirm deletion", value=False)
+                        if confirm:
+                            supabase_db.supabase.table(
+                                "stock_fundamentals").delete().execute()
+                            st.success(
+                                "Fundamental data cache cleared successfully!")
+                except Exception as e:
+                    st.error(f"Error clearing fundamental data: {str(e)}")
+
+        # Enable debug mode
         debug_mode = st.checkbox(
             "Debug Mode",
-            value=getattr(watchlist_manager, 'debug_mode', False),
-            help="Show detailed logging for database operations"
+            value=st.session_state.get('debug_mode', False),
+            help="Show detailed logging for data operations"
         )
 
-        if debug_mode != getattr(watchlist_manager, 'debug_mode', False):
-            watchlist_manager.debug_mode = debug_mode
+        if debug_mode != st.session_state.get('debug_mode', False):
+            st.session_state.debug_mode = debug_mode
+
+            # Update debug mode in components
             if supabase_db:
                 supabase_db.debug_mode = debug_mode
+
+            if 'strategy' in st.session_state:
+                if hasattr(st.session_state.strategy, 'data_manager'):
+                    st.session_state.strategy.data_manager.set_debug_mode(
+                        debug_mode)
+
             st.success(f"Debug mode {'enabled' if debug_mode else 'disabled'}")
 
-    # Display information about cross-device usage
-    st.subheader("Cloud Database Benefits")
+    # Display information about cloud database
+    st.subheader("Cloud Database Information")
     st.markdown("""
-    ### Advantages of using Supabase cloud database:
+    ### Benefits of Cloud Database Storage:
     
-    1. **Access from anywhere**: Your watchlists are stored in the cloud and accessible from any device.
+    1. **Persistent Caching**: Data is stored between sessions, reducing API calls and improving performance.
     
-    2. **No local storage limitations**: Data is stored in Supabase's PostgreSQL database, not on your local device.
+    2. **Cross-Device Access**: Your stock data and watchlists are available on any device.
     
-    3. **Automatic backups**: Supabase includes automated backups of your data.
+    3. **Reduced API Usage**: Minimizes the need to repeatedly fetch data from external services.
     
-    4. **Data sharing**: Easily share watchlists between team members by using the same Supabase project.
+    4. **Better Reliability**: If one data source fails, the system can use cached data as a fallback.
     
-    5. **Scalability**: As your data grows, the cloud database can handle it without performance issues.
+    ### Data Sources:
     
-    ### For extra safety, we recommend:
+    - **Yahoo Finance**: Primary source for most stock data, no API key required but may have rate limits.
     
-    - Periodically download backups using the "Download Backup File" button above
-    - Store backups in a secure location like a cloud drive or external storage
+    - **Alpha Vantage**: Secondary source that requires an API key, with limited free tier (5 calls/minute, 500 calls/day).
     
-    *For technical support or database issues, please contact the application administrator.*
+    The app will try your preferred source first, then fall back to the secondary source if needed. If both fail, it will use cached data when available.
     """)

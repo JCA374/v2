@@ -1,0 +1,11 @@
+company_name,yahoo_ticker,yahoo_valid,alpha_ticker,alpha_valid
+Yahoo Finance,ACAD,False,ACAD,True
+Yahoo Finance,AOI,False,,False
+Yahoo Finance,ALIG.ST,False,,False
+Yahoo Finance,ALLIGO-B.ST,False,,False
+Yahoo Finance,AMBEA.ST,False,,False
+Yahoo Finance,APOTEA.ST,False,,False
+Yahoo Finance,AQ.ST,False,,False
+Yahoo Finance,ARP,False,,False
+Yahoo Finance,ARISE.ST,False,,False
+Yahoo Finance,ARJO-B.ST,False,,False
