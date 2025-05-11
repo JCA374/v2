@@ -16,3 +16,7 @@ notebooks/old/
 .devcontainer
 /.devcontainer
 **/.claude/settings.local.json
+
+
+secrets.toml
+.streamlit/secrets.toml
