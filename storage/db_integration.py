@@ -1,5 +1,5 @@
 import streamlit as st
-from supabase_stock_db import SupabaseStockDB
+from storage.supabase_stock_db import SupabaseStockDB
 
 
 def initialize_db():

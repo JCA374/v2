@@ -1,0 +1,567 @@
+Tickersymbol,YahooTicker,YahooExchange,CompanyName,size_category,Exchange
+ACRI A,ACRI-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ACRI B,ACRI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ATIC,ATIC.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ACTI,ACTI,US Markets (default),Yahoo Finance,Small Cap,
+ATORX,ATORX.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ANNE B,ANNE-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ANOT,ANOT.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ARPL,ARPL.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ACE,ACE,US Markets (default),Yahoo Finance,Small Cap,
+B3,B3.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+BALCO,BALCO.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+BEGR,BEGR.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+BERNER B,BERNER-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+BORG,BORG.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+BONG,BONG.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+BOUL,BOUL,US Markets (default),Yahoo Finance,Small Cap,
+BULTEN,BULTEN.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+CRAD B,CRAD-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+CANTA,CANTA.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+CARA,CARA.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+CTM,CTM,US Markets (default),Yahoo Finance,Small Cap,
+CNCJO B,CNCJO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+CTEK,CTEK.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+DEDI,DEDI.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+DORO,DORO.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+DURC B,DURC-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+EGTX,EGTX.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ELON,ELON,US Markets (default),Yahoo Finance,Small Cap,
+ELTEL,ELTEL.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+EG7,EG7.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ENRO,ENRO,US Markets (default),Yahoo Finance,Small Cap,
+EPIS B,EPIS-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+EQL,EQL,US Markets (default),Yahoo Finance,Small Cap,
+FASTAT,FASTAT.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+FNM,FNM,US Markets (default),Yahoo Finance,Small Cap,
+FING B,FING-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+FPIP,FPIP.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+G5EN,G5EN.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+GARO,GARO.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+HAKI A,HAKI-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+HAKI B,HAKI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+HAV B,HAV-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+IS,IS.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+IMMNOV,IMMNOV.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+IBT B,IBT-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+INFREA,INFREA.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+IRLAB A,IRLAB-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ISOFOL,ISOFOL.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+K2A B,K2A-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+K2A PREF,K2A-PREF.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+KARNEL B,KARNEL-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+KDEV,KDEV.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+LAMM B,LAMM-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MAHA A,MAHA-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MEAB B,MEAB-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MANG,MANG.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MVIR,MVIR.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+IMMU,IMMU.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MSAB B,MSAB-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MSON A,MSON-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MSON B,MSON-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+MOB,MOB,US Markets (default),Yahoo Finance,Small Cap,
+MOMENT,MOMENT.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SAFETY B,SAFETY-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NICA,NICA.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NAXS,NAXS.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NELLY,NELLY.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NETEL,NETEL.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NGS,NGS,US Markets (default),Yahoo Finance,Small Cap,
+NIL B,NIL-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NORB B,NORB-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+NTEK B,NTEK-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ONCO,ONCO,US Markets (default),Yahoo Finance,Small Cap,
+ORX,ORX,US Markets (default),Yahoo Finance,Small Cap,
+OVZON,OVZON.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+PIERCE,PIERCE.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+PION B,PION-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+PREC,PREC,US Markets (default),Yahoo Finance,Small Cap,
+PREV B,PREV-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+PROF B,PROF-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+PENG B,PENG-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+QLINEA,QLINEA.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+QLIRO,QLIRO.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+RAIL,RAIL,US Markets (default),Yahoo Finance,Small Cap,
+SANION,SANION.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SEAF,SEAF.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SGG,SGG,US Markets (default),Yahoo Finance,Small Cap,
+SEZI,SEZI.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SINT,SINT,US Markets (default),Yahoo Finance,Small Cap,
+SIVE,SIVE.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SLEEP,SLEEP.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SOF B,SOF-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SFAB,SFAB.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+STAR A,STAR-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+STAR B,STAR-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+STWK,STWK,US Markets (default),Yahoo Finance,Small Cap,
+SVIK,SVIK.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SVED B,SVED-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+SYNACT,SYNACT.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+TOBII,TOBII.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+TRAD,TRAD,US Markets (default),Yahoo Finance,Small Cap,
+TRANS,TRANS.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+VICO,VICO.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+VIVE,VIVE,US Markets (default),Yahoo Finance,Small Cap,
+WTW A,WTW-A.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+WISE,WISE,US Markets (default),Yahoo Finance,Small Cap,
+WBGR B,WBGR-B.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+XBRANE,XBRANE.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+XSPRAY,XSPRAY.ST,Stockholm Stock Exchange,Yahoo Finance,Small Cap,
+ACAD,ACAD,US Markets (default),Yahoo Finance,Mid Cap,
+AOI,AOI,US Markets (default),Yahoo Finance,Mid Cap,
+ALIG,ALIG.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ALLIGO B,ALLIGO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+AMBEA,AMBEA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+APOTEA,APOTEA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+AQ,AQ.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ARP,ARP,US Markets (default),Yahoo Finance,Mid Cap,
+ARISE,ARISE.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ARJO B,ARJO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ATT,ATT,US Markets (default),Yahoo Finance,Mid Cap,
+BACTI B,BACTI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BEIA B,BEIA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BERG B,BERG-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BHG,BHG.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BICO,BICO,US Markets (default),Yahoo Finance,Mid Cap,
+BIOG B,BIOG-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BINV,BINV,US Markets (default),Yahoo Finance,Mid Cap,
+BONAV A,BONAV-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BONAV B,BONAV-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BOOZT,BOOZT.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BRIN B,BRIN-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BTS B,BTS-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BUFAB,BUFAB.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+BMAX,BMAX,US Markets (default),Yahoo Finance,Mid Cap,
+AJA B,AJA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CAT A,CAT-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CAT B,CAT-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CCC,CCC.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CEVI,CEVI.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CIBUS,CIBUS.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CINPHA,CINPHA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CINT,CINT,US Markets (default),Yahoo Finance,Mid Cap,
+CLAS B,CLAS-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CLA B,CLA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CS,CS.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+COOR,COOR.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CRED A,CRED-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+CTT,CTT.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+DIOS,DIOS.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+DUNI,DUNI.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+DUST,DUST,US Markets (default),Yahoo Finance,Mid Cap,
+DYVOX,DYVOX.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+EAST,EAST.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ELAN B,ELAN-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+EMIL B,EMIL-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+EMIL PREF,EMIL-PREF.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ENEA,ENEA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+EOLU B,EOLU-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+EPEN,EPEN,US Markets (default),Yahoo Finance,Mid Cap,
+EWRK,EWRK.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+FAG,FAG.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+FG,FG,US Markets (default),Yahoo Finance,Mid Cap,
+FLERIE,FLERIE.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+FMM B,FMM-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+GPG,GPG.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+G2M,G2M.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+GREEN,GREEN.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+HNSA,HNSA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+HANZA,HANZA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+HEBA B,HEBA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+HTRO,HTRO.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+HOFI,HOFI.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+HUM,HUM,US Markets (default),Yahoo Finance,Mid Cap,
+HUMBLE,HUMBLE.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+IAR B,IAR-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+INSTAL,INSTAL,US Markets (default),Yahoo Finance,Mid Cap,
+INTEA B,INTEA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+INTEA D,INTEA-D.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+INTRUM,INTRUM.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+IVSO,IVSO,US Markets (default),Yahoo Finance,Mid Cap,
+INWI,INWI.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ITAB,ITAB.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+JOMA,JOMA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+KFAST B,KFAST-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+KABE B,KABE-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+KAR,KAR,US Markets (default),Yahoo Finance,Mid Cap,
+KLARA B,KLARA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+KNOW,KNOW,US Markets (default),Yahoo Finance,Mid Cap,
+LIME,LIME,US Markets (default),Yahoo Finance,Mid Cap,
+LINC,LINC,US Markets (default),Yahoo Finance,Mid Cap,
+LOGI A,LOGI-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+LOGI B,LOGI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+MCAP,MCAP,US Markets (default),Yahoo Finance,Mid Cap,
+MEKO,MEKO.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+MILDEF,MILDEF.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+MMGR B,MMGR-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+MTG A,MTG-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+MTG B,MTG-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NMAN,NMAN.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NEOBO,NEOBO.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NETI B,NETI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NIVI B,NIVI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NOBI,NOBI,US Markets (default),Yahoo Finance,Mid Cap,
+NPAPER,NPAPER.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NORION,NORION.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NORVA,NORVA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+NOTE,NOTE,US Markets (default),Yahoo Finance,Mid Cap,
+ORRON,ORRON.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+PLAZ B,PLAZ-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+PCELL,PCELL.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+PRIC B,PRIC-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+PRISMA,PRISMA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+PACT,PACT,US Markets (default),Yahoo Finance,Mid Cap,
+PRFO,PRFO.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+RATO A,RATO-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+RATO B,RATO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+RAY B,RAY-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+REJL B,REJL-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+RESURS,RESURS.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+RVRC,RVRC,US Markets (default),Yahoo Finance,Mid Cap,
+RROS,RROS.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+RUSTA,RUSTA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SBB B,SBB-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SBB D,SBB-D.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SCST,SCST,US Markets (default),Yahoo Finance,Mid Cap,
+SHOT,SHOT,US Markets (default),Yahoo Finance,Mid Cap,
+SDIP B,SDIP-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SDIP PREF,SDIP-PREF.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SEDANA,SEDANA.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SKIS B,SKIS-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+STEF B,STEF-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SFAST,SFAST.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SF,SF,US Markets (default),Yahoo Finance,Mid Cap,
+SVOL A,SVOL-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SVOL B,SVOL-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SLP B,SLP-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+SYNSAM,SYNSAM.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+TFBANK,TFBANK.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+TRAC B,TRAC-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+TRIAN B,TRIAN-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VBG B,VBG-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VEFAB,VEFAB.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VESTUM,VESTUM.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VPLAY A,VPLAY-A.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VPLAY B,VPLAY-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VISC,VISC,US Markets (default),Yahoo Finance,Mid Cap,
+VNV,VNV,US Markets (default),Yahoo Finance,Mid Cap,
+VOLO,VOLO.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+VOLO PREF,VOLO-PREF.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+XANO B,XANO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+XVIVO,XVIVO.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+ORES,ORES.ST,Stockholm Stock Exchange,Yahoo Finance,Mid Cap,
+AAK,AAK.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ABB,ABB.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ALIF B,ALIF-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ANOD B,ANOD-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ADDT B,ADDT-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+AFRY,AFRY.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ALFA,ALFA,US Markets (default),Yahoo Finance,Large Cap,
+ALLEI,ALLEI.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ARION SDB,ARION-SDB.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ASKER,ASKER.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ASMDEE B,ASMDEE-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ASSA B,ASSA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+AZN,AZN,US Markets (default),Yahoo Finance,Large Cap,
+ATCO A,ATCO-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ATCO B,ATCO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ATRLJ B,ATRLJ-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ALIV SDB,ALIV-SDB.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+AZA,AZA,US Markets (default),Yahoo Finance,Large Cap,
+AXFO,AXFO.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BALD B,BALD-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BEIJ B,BEIJ-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BETS B,BETS-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BETCO,BETCO.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BILI A,BILI-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BILL,BILL,US Markets (default),Yahoo Finance,Large Cap,
+BIOA B,BIOA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BIOT,BIOT.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BOL,BOL,US Markets (default),Yahoo Finance,Large Cap,
+BONEX,BONEX.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+BRAV,BRAV,US Markets (default),Yahoo Finance,Large Cap,
+BURE,BURE.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+CAMX,CAMX,US Markets (default),Yahoo Finance,Large Cap,
+CAST,CAST,US Markets (default),Yahoo Finance,Large Cap,
+CATE,CATE.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+CORE A,CORE-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+CORE B,CORE-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+CORE D,CORE-D.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+CORE PREF,CORE-PREF.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+DOM,DOM,US Markets (default),Yahoo Finance,Large Cap,
+ELUX A,ELUX-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ELUX B,ELUX-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EPRO B,EPRO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EKTA B,EKTA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EMBRAC B,EMBRAC-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ENGCON B,ENGCON-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EPI A,EPI-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EPI B,EPI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EQT,EQT,US Markets (default),Yahoo Finance,Large Cap,
+ERIC A,ERIC-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ERIC B,ERIC-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ESSITY A,ESSITY-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+ESSITY B,ESSITY-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+EVO,EVO,US Markets (default),Yahoo Finance,Large Cap,
+FABG,FABG.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+FPAR A,FPAR-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+FPAR D,FPAR-D.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+FOI B,FOI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+FNOX,FNOX.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+GETI B,GETI-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+GRNG,GRNG.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HM B,HM-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+SHB A,SHB-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+SHB B,SHB-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HEM,HEM,US Markets (default),Yahoo Finance,Large Cap,
+HEXA B,HEXA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HPOL B,HPOL-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HMS,HMS,US Markets (default),Yahoo Finance,Large Cap,
+HOLM A,HOLM-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HOLM B,HOLM-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HUFV A,HUFV-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HUSQ A,HUSQ-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+HUSQ B,HUSQ-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+INDU A,INDU-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+INDU C,INDU-C.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+INDT,INDT.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+IPCO,IPCO.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+INVE A,INVE-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+INVE B,INVE-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+JM,JM,US Markets (default),Yahoo Finance,Large Cap,
+KINV A,KINV-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+KINV B,KINV-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LAGR B,LAGR-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LATO B,LATO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LIFCO B,LIFCO-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LIAB,LIAB,US Markets (default),Yahoo Finance,Large Cap,
+LOOMIS,LOOMIS.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LUND B,LUND-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LUG,LUG.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+LUMI,LUMI,US Markets (default),Yahoo Finance,Large Cap,
+MCOV B,MCOV-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+MIPS,MIPS,US Markets (default),Yahoo Finance,Large Cap,
+MTRS,MTRS,US Markets (default),Yahoo Finance,Large Cap,
+MYCR,MYCR.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+NCAB,NCAB,US Markets (default),Yahoo Finance,Large Cap,
+NCC A,NCC-A.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+NCC B,NCC-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+NEWA B,NEWA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+NIBE B,NIBE-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+NOLA B,NOLA-B.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+NDA SE,NDA-SE.ST,Stockholm Stock Exchange,Yahoo Finance,Large Cap,
+,BOL.ST,,Boliden AB,Unknown,STO
+,AZN.ST,,AstraZeneca PLC,Unknown,STO
+,ENRO.ST,,Eniro Group AB,Unknown,STO
+,ALFA.ST,,Alfa Laval AB,Unknown,STO
+,SAND.ST,,Sandvik AB,Unknown,STO
+,TELIA.ST,,Telia Company AB,Unknown,STO
+,CAST.ST,,Castellum AB,Unknown,STO
+,JM.ST,,JM AB,Unknown,STO
+,LIAB.ST,,Lindab International AB,Unknown,STO
+,NOBI.ST,,Nobia AB,Unknown,STO
+,ACTI.ST,,Active Biotech AB,Unknown,STO
+,BILL.ST,,Billerud Aktiebolag,Unknown,STO
+,BINV.ST,,BioInvent International AB,Unknown,STO
+,BMAX.ST,,Byggmax Group AB,Unknown,STO
+,BOUL.ST,,Boule Diagnostics AB,Unknown,STO
+,KNOW.ST,,Knowit AB,Unknown,STO
+,NOTE.ST,,NOTE AB,Unknown,STO
+,ORX.ST,,Orexo AB,Unknown,STO
+,PACT.ST,,Proact IT Group AB,Unknown,STO
+,PREC.ST,,Precise Biometrics AB,Unknown,STO
+,SENS.ST,,"SENS.ST,0P00018KCC,0",Unknown,STO
+,SINT.ST,,SinterCast AB,Unknown,STO
+,STWK.ST,,Stockwik Förvaltning AB,Unknown,STO
+,SYSR.ST,,Systemair AB,Unknown,STO
+,TIETOS.ST,,TietoEVRY Corporation,Unknown,STO
+,TRAD.ST,,TradeDoubler AB,Unknown,STO
+,VITR.ST,,Vitrolife AB,Unknown,STO
+,WIHL.ST,,Wihlborgs Fastigheter AB,Unknown,STO
+,ARP.ST,,Arctic Paper S.A.,Unknown,STO
+,ABIG.ST,,"ABIG.ST,0P0000VYMC,1286608",Unknown,STO
+,SFTR.ST,,Safeture AB,Unknown,STO
+,ABSO.ST,,Absolent Air Care Group AB,Unknown,STO
+,SPRINT.ST,,Sprint Bioscience AB,Unknown,STO
+,NP3.ST,,NP3 Fastigheter AB,Unknown,STO
+,ARCOMA.ST,,Arcoma AB,Unknown,STO
+,ZENI.ST,,Zenicor Medical Systems AB,Unknown,STO
+,THULE.ST,,Thule Group AB,Unknown,STO
+,HEART.ST,,Scandinavian Real Heart AB,Unknown,STO
+,ORGC.ST,,OrganoClick AB,Unknown,STO
+,DUST.ST,,Dustin Group AB,Unknown,STO
+,APTA.ST,,Aptahem AB,Unknown,STO
+,LUC.ST,,Lucara Diamond Corp,Unknown,STO
+,SCST.ST,,Scandi Standard AB,Unknown,STO
+,TROAX.ST,,Troax Group AB,Unknown,STO
+,SPIFF.ST,,Spiffbet AB,Unknown,STO
+,NFGAB.ST,,Nordic Flanges Group AB,Unknown,STO
+,CLBIO.ST,,Corline Biomedical AB,Unknown,STO
+,COMBI.ST,,Combigene AB,Unknown,STO
+,GCOR.ST,,Gaming Corps AB,Unknown,STO
+,SCIB.ST,,Scibase Holding AB,Unknown,STO
+,AVEN.ST,,Avensia AB,Unknown,STO
+,IDOGEN.ST,,"IDOGEN.ST,0P000167OF,0",Unknown,STO
+,REDS.ST,,Redsense Medical AB,Unknown,STO
+,IVSO.ST,,INVISIO AB,Unknown,STO
+,KONT.ST,,Kontigo Care AB,Unknown,STO
+,QBNK.ST,,QBNK Holding AB,Unknown,STO
+,SPEC.ST,,SpectraCure AB,Unknown,STO
+,WISE.ST,,Wise Group AB,Unknown,STO
+,BONAS.ST,,Bonäsudden Holding AB,Unknown,STO
+,HYCO.ST,,Hybricon AB,Unknown,STO
+,ARCT.ST,,Arctic Minerals AB,Unknown,STO
+,BRE2.ST,,Bredband2 i Skandinavien AB,Unknown,STO
+,SINCH.ST,,Sinch AB,Unknown,STO
+,DDM.ST,,"DDM.ST,0P00013TU2,0",Unknown,STO
+,DIAH.ST,,Diadrom Holding AB,Unknown,STO
+,DIGN.ST,,Dignitana AB,Unknown,STO
+,DOXA.ST,,Doxa AB,Unknown,STO
+,DRIL.ST,,Drillcon AB,Unknown,STO
+,KAKEL.ST,,Kakel Max AB,Unknown,STO
+,ENZY.ST,,Enzymatica AB,Unknown,STO
+,GENI.ST,,Generic Sweden AB,Unknown,STO
+,HELIO.ST,,Heliospectra AB,Unknown,STO
+,IMPC.ST,,Impact Coatings AB,Unknown,STO
+,KAMBI.ST,,Kambi Group Plc,Unknown,STO
+,KAPIAB.ST,,Kallebäck Property Invest AB,Unknown,STO
+,KENH.ST,,Kentima Holding AB,Unknown,STO
+,LIDDS.ST,,LIDDS AB,Unknown,STO
+,LINKAB.ST,,Link Prop Investment AB,Unknown,STO
+,MAV.ST,,Mavshack AB,Unknown,STO
+,NEXAM.ST,,Nexam Chemical Holding AB,Unknown,STO
+,NICO.ST,,Nicoccino Holding AB,Unknown,STO
+,NJOB.ST,,NetJobs Group AB,Unknown,STO
+,OBAB.ST,,Online Brands Nordic AB,Unknown,STO
+,BINERO.ST,,Binero Group AB,Unknown,STO
+,POLY.ST,,Polyplank AB,Unknown,STO
+,SBOK.ST,,ScandBook Holding AB,Unknown,STO
+,SDOS.ST,,ScandiDos AB,Unknown,STO
+,SKMO.ST,,Skåne-möllan AB,Unknown,STO
+,SOLT.ST,,SolTech Energy Sweden AB,Unknown,STO
+,WPAY.ST,,Westpay AB,Unknown,STO
+,BRAV.ST,,Bravida Holding AB,Unknown,STO
+,KLAR.ST,,Klaria Pharma Holding AB,Unknown,STO
+,ALZ.ST,,Alzinova AB,Unknown,STO
+,MINEST.ST,,Minesto AB,Unknown,STO
+,PCAT.ST,,Photocat A/S,Unknown,STO
+,CAMX.ST,,Camurus AB,Unknown,STO
+,NILS.ST,,Nilsson Special Vehicles AB,Unknown,STO
+,PREBON.ST,,Prebona AB,Unknown,STO
+,FOUT.ST,,"FOUT.ST,0P0001NH7J,172370",Unknown,STO
+,HEGR.ST,,Hedera Group AB,Unknown,STO
+,PMED.ST,,PEPTONIC Medical AB,Unknown,STO
+,POLYG.ST,,Polygiene Group AB,Unknown,STO
+,XINT.ST,,Xintela AB,Unknown,STO
+,PLEJD.ST,,Plejd AB,Unknown,STO
+,SYDSV.ST,,Sydsvenska Hem AB,Unknown,STO
+,NEPA.ST,,Nepa AB,Unknown,STO
+,CLEMO.ST,,Clean Motion AB,Unknown,STO
+,ERMA.ST,,Enorama Pharma AB,Unknown,STO
+,SECARE.ST,,Swedencare AB,Unknown,STO
+,GOMX.ST,,GomSpace Group AB,Unknown,STO
+,LAUR.ST,,"LAUR.ST,0P00018508,0",Unknown,STO
+,AROC.ST,,AroCell AB (publ),Unknown,STO
+,PROVIT.ST,,Provide IT Sweden AB,Unknown,STO
+,BRANDB.ST,,"BRANDB.ST,0P0001RSAU,14557717",Unknown,STO
+,FLOWS.ST,,Flowscape Technology AB,Unknown,STO
+,EXPRS2.ST,,ExpreS2ion Biotech Holding AB,Unknown,STO
+,LAIR.ST,,"LAIR.ST,0P0000ZB1P,9886",Unknown,STO
+,F2M.ST,,"F2M.ST,0P0000ZB21,783520",Unknown,STO
+,GUARD.ST,,Guard Therapeutics Internationa,Unknown,STO
+,ALCA.ST,,Alcadon Group AB,Unknown,STO
+,CYB1.ST,,Cyber Security 1 AB,Unknown,STO
+,SERT.ST,,Serstech AB,Unknown,STO
+,SOLNA.ST,,Solnaberg Property AB,Unknown,STO
+,CFISH.ST,,Crunchfish AB,Unknown,STO
+,BYGGP.ST,,ByggPartner Gruppen AB,Unknown,STO
+,ACARIX.ST,,Acarix AB,Unknown,STO
+,AINO.ST,,Aino Health AB,Unknown,STO
+,EOS.ST,,"EOS.ST,0P0000EU9Y,0",Unknown,STO
+,SEYE.ST,,Smart Eye AB,Unknown,STO
+,AMNO.ST,,Amnode AB,Unknown,STO
+,BOTX.ST,,Botnia Exploration Holding AB,Unknown,STO
+,BRAIN.ST,,BrainCool AB,Unknown,STO
+,EQL.ST,,EQL Pharma AB,Unknown,STO
+,FXI.ST,,FX International AB,Unknown,STO
+,GJAB.ST,,Gullberg & Jansson AB,Unknown,STO
+,GREAT.ST,,Greater Than AB,Unknown,STO
+,LOVI.ST,,Lovisagruvan AB,Unknown,STO
+,QUIA.ST,,QUIA PHARMA AB,Unknown,STO
+,MODI.ST,,Motion Display Scandinavia AB,Unknown,STO
+,MPEN.ST,,Medimi AB,Unknown,YHD
+,MPOS.ST,,Micropos Medical AB,Unknown,STO
+,NANEXA.ST,,Nanexa AB,Unknown,STO
+,NFO.ST,,NFO Drives AB,Unknown,STO
+,NOVU.ST,,Novus Group International AB,Unknown,STO
+,PHAL.ST,,PharmaLundensis AB,Unknown,STO
+,SDET.ST,,SensoDetect AB,Unknown,STO
+,SPAGO.ST,,Spago Nanomedical AB,Unknown,STO
+,TOURN.ST,,Tourn International AB,Unknown,STO
+,WNT.ST,,WntResearch AB,Unknown,STO
+,EXALT.ST,,Exalt AB,Unknown,STO
+,ONCO.ST,,Oncopeptides AB,Unknown,STO
+,INIT.ST,,Initiator Pharma A/S,Unknown,STO
+,CARE.ST,,Careium AB,Unknown,STO
+,EATG.ST,,EatGood Sweden AB,Unknown,STO
+,MIPS.ST,,Mips AB,Unknown,STO
+,UNIBAP.ST,,Unibap AB,Unknown,STO
+,PRLD.ST,,"PRLD.ST,0P0001A2BV,4129895",Unknown,STO
+,IVACC.ST,,Intervacc AB,Unknown,STO
+,SONE.ST,,Sonetel AB,Unknown,STO
+,TANGI.ST,,Tangiamo Touch Technology AB,Unknown,STO
+,ANNX.ST,,Annexin Pharmaceuticals AB,Unknown,STO
+,ACUC.ST,,AcuCort AB,Unknown,STO
+,XMR.ST,,XMReality AB,Unknown,STO
+,RENT.ST,,"RENT.ST,0P0001AE1G,0",Unknown,STO
+,BUSER.ST,,Bambuser AB,Unknown,STO
+,MANTEX.ST,,Mantex AB,Unknown,STO
+,INSTAL.ST,,Instalco AB,Unknown,STO
+,MTRS.ST,,Munters Group AB,Unknown,STO
+,ENERS.ST,,Enersize Oyj,Unknown,STO
+,NITRO.ST,,Nitro Games Oyj,Unknown,STO
+,QUART.ST,,Quartiers Properties AB,Unknown,STO
+,ZAPLOX.ST,,Zaplox AB,Unknown,STO
+,PAX.ST,,Paxman AB,Unknown,STO
+,REALFI.ST,,Realfiction Holding AB,Unknown,STO
+,ENRAD.ST,,Enrad AB,Unknown,STO
+,NXTCL.ST,,NextCell Pharma AB,Unknown,STO
+,SENZA.ST,,SenzaGen AB,Unknown,STO
+,ISAB.ST,,Inhalation Sciences Sweden AB,Unknown,STO
+,QIIWI.ST,,Qiiwi Games AB,Unknown,STO
+,LOGIST.ST,,Logistri Fastighets AB,Unknown,STO
+,BIBB.ST,,BibbInstruments AB,Unknown,STO
+,2CUREX.ST,,2cureX AB,Unknown,STO
+,AWRD.ST,,Awardit AB,Unknown,STO
+,TSEC.ST,,Tempest Security AB,Unknown,STO
+,ACCON.ST,,Acconeer AB,Unknown,STO
+,SCOUT.ST,,Scout Gaming Group AB,Unknown,STO
+,BIOWKS.ST,,Bio-Works Technologies AB,Unknown,STO
+,FLEXQ.ST,,FlexQube AB,Unknown,STO
+,LEMSE.ST,,Leading Edge Materials Corp.,Unknown,STO
+,ICO.ST,,Iconovo AB,Unknown,STO
+,JDT.ST,,JonDeTech Sensors AB,Unknown,STO
+,ITECH.ST,,I-Tech AB,Unknown,STO
+,NCAB.ST,,NCAB Group AB,Unknown,STO
+,FLEXM.ST,,Flexion Mobile Plc,Unknown,STO
+,RAKE.ST,,Raketech Group Holding plc,Unknown,STO
+,RPLAN.ST,,Ranplan Group AB,Unknown,STO
+,TOUCH.ST,,Touchtech AB,Unknown,STO
+,NIO.ST,,Nordic Iron Ore AB,Unknown,STO
+,247.ST,,24SevenOffice Group AB,Unknown,STO
+,AXOLOT.ST,,Axolot Solutions Holding AB,Unknown,STO
+,ALZCUR.ST,,AlzeCure Pharma AB,Unknown,STO
+,INCOAX.ST,,InCoax Networks AB,Unknown,STO
+,FERRO.ST,,Ferroamp AB,Unknown,STO
+,TEQ.ST,,Teqnion AB,Unknown,STO
+,ZICC.ST,,Ziccum AB,Unknown,STO
+,RISK.ST,,RISK.ST,Unknown,STO
+,UPSALE.ST,,Upsales Technology AB,Unknown,STO
+,OSSD.ST,,OssDsign AB,Unknown,STO
+,NHCBHFFS.ST,,Baltic Horizon Fund,Unknown,STO
+,QBIT.ST,,"QBIT.ST,0P0001I073,220237",Unknown,STO
+,ATANA.ST,,"ATANA.ST,0P0001CSYW,472453",Unknown,STO
+,SMOL.ST,,Smoltek Nanotech Holding AB,Unknown,STO
+,MNTC.ST,,Mentice AB,Unknown,STO
+,LIPI.ST,,Lipidor AB,Unknown,STO

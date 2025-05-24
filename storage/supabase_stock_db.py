@@ -19,20 +19,53 @@ class SupabaseStockDB:
     def __init__(self):
         """Initialize Supabase connection"""
         self.supabase = None
-        self.connect()
-        self.create_tables()
+        self.debug_mode = False
+        
+        # Try to connect, but don't fail if connection is not possible
+        try:
+            self.connect()
+            if self.supabase:
+                self.create_tables()
+        except Exception as e:
+            # Just log the error but don't fail initialization
+            logging.error(f"Failed to initialize Supabase connection: {e}")
+            # Supabase will be None, and methods will check for it
 
     def connect(self):
         """Connect to Supabase"""
         try:
-            # Get connection parameters from Streamlit secrets
-            supabase_url = st.secrets.get("supabase_url", "")
-            supabase_key = st.secrets.get("supabase_key", "")
-
+            # First try to get credentials from Streamlit secrets
+            supabase_url = ""
+            supabase_key = ""
+            
+            # Check if Streamlit secrets are available
+            if hasattr(st, 'secrets'):
+                supabase_url = st.secrets.get("supabase_url", "")
+                supabase_key = st.secrets.get("supabase_key", "")
+                
+            # If credentials are not found in Streamlit secrets, try to read from root secrets.toml
             if not supabase_url or not supabase_key:
-                raise ValueError(
-                    "Supabase URL and key must be provided in secrets")
-
+                try:
+                    import os
+                    import toml
+                    root_secrets_path = os.path.join(os.getcwd(), "secrets.toml")
+                    
+                    if os.path.exists(root_secrets_path):
+                        logger.info(f"Reading credentials from {root_secrets_path}")
+                        secrets_data = toml.load(root_secrets_path)
+                        supabase_url = secrets_data.get("supabase_url", "")
+                        supabase_key = secrets_data.get("supabase_key", "")
+                except Exception as e:
+                    logger.warning(f"Failed to read from root secrets.toml: {e}")
+            
+            # Check if we have valid credentials
+            if not supabase_url or not supabase_key:
+                logger.warning("Supabase URL and key must be provided in secrets.toml file")
+                return False
+                
+            # Log the URL being used (without showing the key for security)
+            logger.info(f"Connecting to Supabase at: {supabase_url}")
+            
             # Connect to Supabase
             self.supabase = create_client(supabase_url, supabase_key)
             logger.info("Supabase connection established")

@@ -17,6 +17,8 @@ from tabs.scanner_tab import render_scanner_tab
 from tabs.multi_timeframe_tab import render_multi_timeframe_tab
 # Import the new storage settings tab
 from tabs.storage_settings_tab import render_storage_settings_tab
+# Import the new Swedish stocks tab
+from tabs.swedish_stocks_tab import render_swedish_stocks_tab
 
 # Import file storage
 from storage.file_storage import FileStorage
@@ -42,9 +44,17 @@ def create_streamlit_app():
 
     # Initialize Supabase database connection if it doesn't exist
     if 'supabase_db' not in st.session_state:
-        st.session_state.supabase_db = SupabaseStockDB()
-        # Enable debug mode initially to diagnose issues
-        st.session_state.supabase_db.debug_mode = True
+        try:
+            # Try to initialize Supabase connection
+            st.session_state.supabase_db = SupabaseStockDB()
+            # Enable debug mode initially to diagnose issues
+            st.session_state.supabase_db.debug_mode = True
+        except Exception as e:
+            st.error(f"Failed to connect to Supabase database: {str(e)}")
+            st.info("Some features will be limited. Check the Swedish Stocks tab for setup instructions.")
+            # Create an empty placeholder object
+            from types import SimpleNamespace
+            st.session_state.supabase_db = SimpleNamespace(supabase=None, debug_mode=True)
 
     # Initialize shared state objects if they don't exist
     if 'strategy' not in st.session_state:
@@ -72,6 +82,7 @@ def create_streamlit_app():
         "Enskild Aktieanalys": render_analysis_tab,
         "Stock Scanner": render_scanner_tab,
         "Multi-Timeframe Analysis": render_multi_timeframe_tab,
+        "Swedish Stocks": render_swedish_stocks_tab,
         "Storage Settings": render_storage_settings_tab,
     }
 
@@ -175,13 +186,24 @@ def render_sidebar():
             st.write(f"Watchlists: {db_info.get('watchlist_count', 0)}")
             st.write(f"Total stocks: {db_info.get('stock_count', 0)}")
 
-            if st.button("Open Storage Settings", key="open_storage_settings"):
-                # Set the current tab to Storage Settings
-                tab_index = list(["Watchlist & Batch Analysis", "Enskild Aktieanalys",
-                                  "Stock Scanner", "Multi-Timeframe Analysis",
-                                  "Storage Settings"]).index("Storage Settings")
-                st.session_state['current_tab'] = "Storage Settings"
-                st.rerun()
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Open Storage Settings", key="open_storage_settings"):
+                    # Set the current tab to Storage Settings
+                    tab_index = list(["Watchlist & Batch Analysis", "Enskild Aktieanalys",
+                                      "Stock Scanner", "Multi-Timeframe Analysis",
+                                      "Swedish Stocks", "Storage Settings"]).index("Storage Settings")
+                    st.session_state['current_tab'] = "Storage Settings"
+                    st.rerun()
+            
+            with col2:
+                if st.button("Swedish Stocks", key="open_swedish_stocks"):
+                    # Set the current tab to Swedish Stocks
+                    tab_index = list(["Watchlist & Batch Analysis", "Enskild Aktieanalys",
+                                      "Stock Scanner", "Multi-Timeframe Analysis",
+                                      "Swedish Stocks", "Storage Settings"]).index("Swedish Stocks")
+                    st.session_state['current_tab'] = "Swedish Stocks"
+                    st.rerun()
 
     # Quick backup option in sidebar
     with st.sidebar.expander("Quick Backup", expanded=False):
@@ -237,7 +259,7 @@ def handle_tab_state():
     # Get the tabs defined in the app
     tab_names = ["Watchlist & Batch Analysis", "Enskild Aktieanalys",
                  "Stock Scanner", "Multi-Timeframe Analysis",
-                 "Storage Settings"]
+                 "Swedish Stocks", "Storage Settings"]
 
     # Define tab index for Stock Scanner
     SCANNER_TAB_INDEX = 2
