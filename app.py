@@ -13,7 +13,7 @@ import uuid  # Added for generating unique IDs
 # Import tabs
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
-from tabs.scanner_tab import render_enhanced_scanner_tab  # Updated import
+from tabs.scanner_tab import render_scanner_tab
 from tabs.multi_timeframe_tab import render_multi_timeframe_tab
 # Import the new storage settings tab
 from tabs.storage_settings_tab import render_storage_settings_tab
@@ -83,7 +83,7 @@ def create_streamlit_app():
         "Watchlist & Batch Analysis": render_watchlist_tab,
         "Enskild Aktieanalys": render_analysis_tab,
         # Updated tab name and function
-        "Enhanced Stock Scanner": render_enhanced_scanner_tab,
+        "Enhanced Stock Scanner": render_scanner_tab,
         "Multi-Timeframe Analysis": render_multi_timeframe_tab,
         "Swedish Stocks": render_swedish_stocks_tab,
         "Storage Settings": render_storage_settings_tab,
