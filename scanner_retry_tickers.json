@@ -1,0 +1,547 @@
+[
+  {
+    "ticker": "ACRI A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ACRI B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ATIC",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ACTI",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ATORX",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ANNE B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ANOT",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ARPL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ACE",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "B3",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BALCO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BEGR",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BERNER B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BORG",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BONG",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BOUL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "BULTEN",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "CRAD B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "CANTA",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "CARA",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "CTM",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "CNCJO B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "CTEK",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "DEDI",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "DORO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "DURC B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "EGTX",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ELON",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ELTEL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "EG7",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ENRO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "EPIS B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "EQL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "FASTAT",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "FNM",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "FING B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "FPIP",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "G5EN",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "GARO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "HAKI A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "HAKI B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "HAV B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "IS",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "IMMNOV",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "IBT B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "INFREA",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "IRLAB A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ISOFOL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "K2A B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "K2A PREF",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "KARNEL B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "KDEV",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "LAMM B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MAHA A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MEAB B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MANG",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MVIR",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "IMMU",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MSAB B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MSON A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MSON B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MOB",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "MOMENT",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SAFETY B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NICA",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NAXS",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NELLY",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NETEL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NGS",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NIL B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NORB B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "NTEK B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ONCO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "ORX",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "OVZON",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "PIERCE",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "PION B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "PREC",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "PREV B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "PROF B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "PENG B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "QLINEA",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "QLIRO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "RAIL",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SANION",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SEAF",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SGG",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SEZI",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SINT",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SIVE",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SLEEP",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SOF B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SFAB",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "STAR A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "STAR B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "STWK",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SVIK",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SVED B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "SYNACT",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "TOBII",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "TRAD",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "TRANS",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "VICO",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "VIVE",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "WTW A",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "WISE",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "WBGR B",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "XBRANE",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  },
+  {
+    "ticker": "XSPRAY",
+    "reason": "API Error",
+    "timestamp": "2025-05-24 18:11:55"
+  }
+]

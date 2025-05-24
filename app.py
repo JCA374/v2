@@ -1,4 +1,4 @@
-# app.py
+# app.py - Updated to use Enhanced Scanner
 import streamlit as st
 from strategy import ValueMomentumStrategy
 from storage.watchlist_manager import MultiWatchlistManager
@@ -13,7 +13,7 @@ import uuid  # Added for generating unique IDs
 # Import tabs
 from tabs.watchlist_tab import render_watchlist_tab
 from tabs.analysis_tab import render_analysis_tab
-from tabs.scanner_tab import render_scanner_tab
+from tabs.scanner_tab import render_enhanced_scanner_tab  # Updated import
 from tabs.multi_timeframe_tab import render_multi_timeframe_tab
 # Import the new storage settings tab
 from tabs.storage_settings_tab import render_storage_settings_tab
@@ -51,10 +51,12 @@ def create_streamlit_app():
             st.session_state.supabase_db.debug_mode = True
         except Exception as e:
             st.error(f"Failed to connect to Supabase database: {str(e)}")
-            st.info("Some features will be limited. Check the Swedish Stocks tab for setup instructions.")
+            st.info(
+                "Some features will be limited. Check the Swedish Stocks tab for setup instructions.")
             # Create an empty placeholder object
             from types import SimpleNamespace
-            st.session_state.supabase_db = SimpleNamespace(supabase=None, debug_mode=True)
+            st.session_state.supabase_db = SimpleNamespace(
+                supabase=None, debug_mode=True)
 
     # Initialize shared state objects if they don't exist
     if 'strategy' not in st.session_state:
@@ -80,7 +82,8 @@ def create_streamlit_app():
     tabs = {
         "Watchlist & Batch Analysis": render_watchlist_tab,
         "Enskild Aktieanalys": render_analysis_tab,
-        "Stock Scanner": render_scanner_tab,
+        # Updated tab name and function
+        "Enhanced Stock Scanner": render_enhanced_scanner_tab,
         "Multi-Timeframe Analysis": render_multi_timeframe_tab,
         "Swedish Stocks": render_swedish_stocks_tab,
         "Storage Settings": render_storage_settings_tab,
@@ -138,18 +141,21 @@ def render_storage_status():
         # Display Supabase connection status
         if 'supabase_db' in st.session_state and st.session_state.supabase_db.supabase:
             st.sidebar.success("✅ Connected to Supabase")
-            
+
             # Show basic connection info
             supabase_url = st.secrets.get("supabase_url", "")
-            display_url = supabase_url.replace("https://", "").replace("http://", "").rstrip("/")
+            display_url = supabase_url.replace(
+                "https://", "").replace("http://", "").rstrip("/")
             st.sidebar.info(f"Database: {display_url}")
-            
+
             # Try to get some stats from the database
             try:
                 # Get number of stocks with price data
-                price_response = st.session_state.supabase_db.supabase.table("stock_prices").select("ticker").execute()
+                price_response = st.session_state.supabase_db.supabase.table(
+                    "stock_prices").select("ticker").execute()
                 if price_response.data:
-                    unique_tickers = len(set(row['ticker'] for row in price_response.data))
+                    unique_tickers = len(
+                        set(row['ticker'] for row in price_response.data))
                     st.sidebar.metric("Stocks with Price Data", unique_tickers)
             except Exception as e:
                 st.sidebar.warning(f"Could not retrieve stats: {e}")
@@ -191,16 +197,16 @@ def render_sidebar():
                 if st.button("Open Storage Settings", key="open_storage_settings"):
                     # Set the current tab to Storage Settings
                     tab_index = list(["Watchlist & Batch Analysis", "Enskild Aktieanalys",
-                                      "Stock Scanner", "Multi-Timeframe Analysis",
+                                      "Enhanced Stock Scanner", "Multi-Timeframe Analysis",
                                       "Swedish Stocks", "Storage Settings"]).index("Storage Settings")
                     st.session_state['current_tab'] = "Storage Settings"
                     st.rerun()
-            
+
             with col2:
                 if st.button("Swedish Stocks", key="open_swedish_stocks"):
                     # Set the current tab to Swedish Stocks
                     tab_index = list(["Watchlist & Batch Analysis", "Enskild Aktieanalys",
-                                      "Stock Scanner", "Multi-Timeframe Analysis",
+                                      "Enhanced Stock Scanner", "Multi-Timeframe Analysis",
                                       "Swedish Stocks", "Storage Settings"]).index("Swedish Stocks")
                     st.session_state['current_tab'] = "Swedish Stocks"
                     st.rerun()
@@ -258,10 +264,10 @@ def handle_tab_state():
     """
     # Get the tabs defined in the app
     tab_names = ["Watchlist & Batch Analysis", "Enskild Aktieanalys",
-                 "Stock Scanner", "Multi-Timeframe Analysis",
+                 "Enhanced Stock Scanner", "Multi-Timeframe Analysis",
                  "Swedish Stocks", "Storage Settings"]
 
-    # Define tab index for Stock Scanner
+    # Define tab index for Enhanced Stock Scanner
     SCANNER_TAB_INDEX = 2
 
     # Initialize session state for tab tracking if not exists
